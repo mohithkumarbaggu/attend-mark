@@ -207,6 +207,7 @@ const App = {
     if (!modal || !videoEl || !canvasEl) return;
 
     modal.style.display = 'flex';
+    modal.classList.add('active');
     viewfinder.className = 'face-scanner-viewfinder';
     if (scanBeam) scanBeam.style.display = 'block';
     if (flashBadge) flashBadge.style.display = 'none';
@@ -234,8 +235,9 @@ const App = {
     }
 
     const settings = AppStorage.getSettings();
+    const currentStudent = (settings.studentName || 'Student').trim();
 
-    // Flow 1: Enrollment Mode (Countdown -> Snap -> Save)
+    // Flow 1: Enrollment Mode (Explicitly from Settings)
     if (mode === 'enroll') {
       let count = 3;
       flashBadge.style.display = 'flex';
@@ -252,11 +254,11 @@ const App = {
           flashText.textContent = '✓';
           viewfinder.classList.add('verified');
           if (scanBeam) scanBeam.style.display = 'none';
-          statusMsg.textContent = 'Biometric features enrolled!';
+          statusMsg.textContent = `Face biometric template saved for ${currentStudent}!`;
 
-          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, currentStudent);
           this.renderBiometricSettings();
-          AppNotifications.showToast('Face enrolled successfully for Face ID unlock!', 'success');
+          AppNotifications.showToast(`Face enrolled successfully for ${currentStudent}!`, 'success');
 
           setTimeout(() => {
             this.closeFaceScannerModal();
@@ -269,32 +271,24 @@ const App = {
     // Flow 2: Unlock / Test Mode
     const enrolled = FaceBiometrics.getEnrolledFace();
 
-    if (!enrolled) {
-      statusMsg.textContent = 'No face enrolled yet. Auto-enrolling current face...';
+    // Strict Account Security: If no face is enrolled for this account, DO NOT auto-unlock!
+    if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+      viewfinder.className = 'face-scanner-viewfinder failed';
+      if (scanBeam) scanBeam.style.display = 'none';
+      statusMsg.textContent = `No face enrolled for "${currentStudent}". Please use PIN to unlock.`;
+      AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN, then enroll in Settings.`, 'warning', 4000);
+      
       setTimeout(() => {
-        FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
-        viewfinder.classList.add('verified');
-        if (scanBeam) scanBeam.style.display = 'none';
-        if (flashBadge) {
-          flashBadge.style.display = 'flex';
-          flashText.textContent = '✓';
-        }
-        statusMsg.textContent = 'Face registered & verified!';
-
-        AppStorage.unlock();
-        this.hideAuthOverlay();
-        this.renderBiometricSettings();
-        AppNotifications.showToast(`Welcome, ${settings.studentName}! Face enrolled & unlocked.`, 'success');
-
-        setTimeout(() => {
-          this.closeFaceScannerModal();
-        }, 1000);
-      }, 1500);
+        this.closeFaceScannerModal();
+        const pinInput = document.getElementById('auth-pin-input');
+        if (pinInput) pinInput.focus();
+      }, 2000);
       return;
     }
 
-    // Scan loop
+    // Strict Biometric Scan Loop: Only the genuine account holder's face will match
     let scanAttempts = 0;
+    const MAX_SCAN_ATTEMPTS = 20; // ~8 seconds max
     FaceBiometrics.isScanning = true;
 
     FaceBiometrics.scanTimer = setInterval(() => {
@@ -305,42 +299,63 @@ const App = {
       const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
       const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
 
-      statusMsg.textContent = `Matching: ${similarity}% confidence...`;
+      statusMsg.textContent = `Matching: ${similarity}% confidence (85% required)...`;
 
-      if (similarity >= 68 || scanAttempts >= 6) {
+      // STRICT THRESHOLD: Must achieve >= 85% biometric match
+      if (similarity >= 85) {
         FaceBiometrics.isScanning = false;
         clearInterval(FaceBiometrics.scanTimer);
 
-        viewfinder.classList.add('verified');
+        viewfinder.className = 'face-scanner-viewfinder verified';
         if (scanBeam) scanBeam.style.display = 'none';
         if (flashBadge) {
           flashBadge.style.display = 'flex';
           flashText.textContent = '✓';
         }
 
-        const finalScore = Math.max(similarity, 88);
-        statusMsg.textContent = `Match confirmed (${finalScore}%)! Access Granted.`;
+        statusMsg.textContent = `Identity Verified: ${enrolled.studentName} (${similarity}% Match)!`;
 
         if (mode === 'test') {
-          AppNotifications.showToast(`Face Biometrics Confirmed (${finalScore}% match)!`, 'success');
+          AppNotifications.showToast(`Face match confirmed for ${enrolled.studentName} (${similarity}%)!`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 1200);
         } else {
           AppStorage.unlock();
           this.hideAuthOverlay();
-          AppNotifications.showToast(`Face Verified! Welcome, ${settings.studentName}.`, 'success');
+          AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 800);
         }
+      } else if (scanAttempts >= MAX_SCAN_ATTEMPTS) {
+        // Exceeded attempts without meeting strict threshold -> REJECT
+        FaceBiometrics.isScanning = false;
+        clearInterval(FaceBiometrics.scanTimer);
+
+        viewfinder.className = 'face-scanner-viewfinder failed';
+        if (scanBeam) scanBeam.style.display = 'none';
+        statusMsg.textContent = `❌ Face does not match ${enrolled.studentName}! Access Denied.`;
+        AppNotifications.showToast(`Access Denied: Face does not match account owner (${enrolled.studentName}).`, 'error', 4000);
+
+        setTimeout(() => {
+          this.closeFaceScannerModal();
+          const pinInput = document.getElementById('auth-pin-input');
+          if (pinInput) {
+            pinInput.focus();
+            pinInput.value = '';
+          }
+        }, 1800);
       }
     }, 400);
   },
 
   closeFaceScannerModal() {
     const modal = document.getElementById('modal-face-scanner');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
     FaceBiometrics.stopCamera();
   },
 
@@ -1913,6 +1928,7 @@ const App = {
     if (!modal || !videoEl || !canvasEl) return;
 
     modal.style.display = 'flex';
+    modal.classList.add('active');
     viewfinder.className = 'face-scanner-viewfinder';
     if (scanBeam) scanBeam.style.display = 'block';
     if (flashBadge) flashBadge.style.display = 'none';
@@ -1940,8 +1956,9 @@ const App = {
     }
 
     const settings = AppStorage.getSettings();
+    const currentStudent = (settings.studentName || 'Student').trim();
 
-    // Flow 1: Enrollment Mode (Countdown -> Snap -> Save)
+    // Flow 1: Enrollment Mode (Explicitly from Settings)
     if (mode === 'enroll') {
       let count = 3;
       flashBadge.style.display = 'flex';
@@ -1958,11 +1975,11 @@ const App = {
           flashText.textContent = '✓';
           viewfinder.classList.add('verified');
           if (scanBeam) scanBeam.style.display = 'none';
-          statusMsg.textContent = 'Biometric features enrolled!';
+          statusMsg.textContent = `Face biometric template saved for ${currentStudent}!`;
 
-          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, currentStudent);
           this.renderBiometricSettings();
-          AppNotifications.showToast('Face enrolled successfully for Face ID unlock!', 'success');
+          AppNotifications.showToast(`Face enrolled successfully for ${currentStudent}!`, 'success');
 
           setTimeout(() => {
             this.closeFaceScannerModal();
@@ -1975,32 +1992,24 @@ const App = {
     // Flow 2: Unlock / Test Mode
     const enrolled = FaceBiometrics.getEnrolledFace();
 
-    if (!enrolled) {
-      statusMsg.textContent = 'No face enrolled yet. Auto-enrolling current face...';
+    // Strict Account Security: If no face is enrolled for this account, DO NOT auto-unlock!
+    if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+      viewfinder.className = 'face-scanner-viewfinder failed';
+      if (scanBeam) scanBeam.style.display = 'none';
+      statusMsg.textContent = `No face enrolled for "${currentStudent}". Please use PIN to unlock.`;
+      AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN, then enroll in Settings.`, 'warning', 4000);
+      
       setTimeout(() => {
-        FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
-        viewfinder.classList.add('verified');
-        if (scanBeam) scanBeam.style.display = 'none';
-        if (flashBadge) {
-          flashBadge.style.display = 'flex';
-          flashText.textContent = '✓';
-        }
-        statusMsg.textContent = 'Face registered & verified!';
-
-        AppStorage.unlock();
-        this.hideAuthOverlay();
-        this.renderBiometricSettings();
-        AppNotifications.showToast(`Welcome, ${settings.studentName}! Face enrolled & unlocked.`, 'success');
-
-        setTimeout(() => {
-          this.closeFaceScannerModal();
-        }, 1000);
-      }, 1500);
+        this.closeFaceScannerModal();
+        const pinInput = document.getElementById('auth-pin-input');
+        if (pinInput) pinInput.focus();
+      }, 2000);
       return;
     }
 
-    // Scan loop
+    // Strict Biometric Scan Loop: Only the genuine account holder's face will match
     let scanAttempts = 0;
+    const MAX_SCAN_ATTEMPTS = 20; // ~8 seconds max
     FaceBiometrics.isScanning = true;
 
     FaceBiometrics.scanTimer = setInterval(() => {
@@ -2011,42 +2020,63 @@ const App = {
       const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
       const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
 
-      statusMsg.textContent = `Matching: ${similarity}% confidence...`;
+      statusMsg.textContent = `Matching: ${similarity}% confidence (85% required)...`;
 
-      if (similarity >= 68 || scanAttempts >= 6) {
+      // STRICT THRESHOLD: Must achieve >= 85% biometric match
+      if (similarity >= 85) {
         FaceBiometrics.isScanning = false;
         clearInterval(FaceBiometrics.scanTimer);
 
-        viewfinder.classList.add('verified');
+        viewfinder.className = 'face-scanner-viewfinder verified';
         if (scanBeam) scanBeam.style.display = 'none';
         if (flashBadge) {
           flashBadge.style.display = 'flex';
           flashText.textContent = '✓';
         }
 
-        const finalScore = Math.max(similarity, 88);
-        statusMsg.textContent = `Match confirmed (${finalScore}%)! Access Granted.`;
+        statusMsg.textContent = `Identity Verified: ${enrolled.studentName} (${similarity}% Match)!`;
 
         if (mode === 'test') {
-          AppNotifications.showToast(`Face Biometrics Confirmed (${finalScore}% match)!`, 'success');
+          AppNotifications.showToast(`Face match confirmed for ${enrolled.studentName} (${similarity}%)!`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 1200);
         } else {
           AppStorage.unlock();
           this.hideAuthOverlay();
-          AppNotifications.showToast(`Face Verified! Welcome, ${settings.studentName}.`, 'success');
+          AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 800);
         }
+      } else if (scanAttempts >= MAX_SCAN_ATTEMPTS) {
+        // Exceeded attempts without meeting strict threshold -> REJECT
+        FaceBiometrics.isScanning = false;
+        clearInterval(FaceBiometrics.scanTimer);
+
+        viewfinder.className = 'face-scanner-viewfinder failed';
+        if (scanBeam) scanBeam.style.display = 'none';
+        statusMsg.textContent = `❌ Face does not match ${enrolled.studentName}! Access Denied.`;
+        AppNotifications.showToast(`Access Denied: Face does not match account owner (${enrolled.studentName}).`, 'error', 4000);
+
+        setTimeout(() => {
+          this.closeFaceScannerModal();
+          const pinInput = document.getElementById('auth-pin-input');
+          if (pinInput) {
+            pinInput.focus();
+            pinInput.value = '';
+          }
+        }, 1800);
       }
     }, 400);
   },
 
   closeFaceScannerModal() {
     const modal = document.getElementById('modal-face-scanner');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
     FaceBiometrics.stopCamera();
   },
 

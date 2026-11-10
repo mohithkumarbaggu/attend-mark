@@ -2094,6 +2094,15 @@ input:checked + .slider:before {
   transition: all 0.3s ease;
 }
 
+#modal-face-scanner {
+  z-index: 10005 !important;
+}
+
+#modal-face-scanner.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 .face-scanner-viewfinder.verified {
   border-color: #10B981 !important;
   box-shadow: 0 0 32px rgba(16, 185, 129, 0.45) !important;
@@ -2101,7 +2110,14 @@ input:checked + .slider:before {
 
 .face-scanner-viewfinder.failed {
   border-color: #EF4444 !important;
-  box-shadow: 0 0 32px rgba(239, 68, 68, 0.45) !important;
+  box-shadow: 0 0 32px rgba(239, 68, 68, 0.5) !important;
+  animation: shakeViewfinder 0.45s ease;
+}
+
+@keyframes shakeViewfinder {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
 }
 
 #face-scanner-video {
