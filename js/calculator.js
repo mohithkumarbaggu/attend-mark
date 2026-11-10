@@ -42,6 +42,9 @@ const AttendanceCalculator = {
         holidayDays++;
         return; // Holidays do not contribute to conducted or attended
       }
+      if (day.isNoClass) {
+        return; // Entire day marked as No Class / Cancelled
+      }
 
       const periods = day.periods || [];
       let dayPresent = 0;
@@ -50,7 +53,7 @@ const AttendanceCalculator = {
       periods.forEach((p) => {
         const subj = (p.subject || `Period ${p.periodNumber}`).trim();
         if (!subjectStatsMap[subj]) {
-          subjectStatsMap[subj] = { attended: 0, conducted: 0, missed: 0 };
+          subjectStatsMap[subj] = { attended: 0, conducted: 0, missed: 0, noClass: 0 };
         }
 
         if (p.status === 'present') {
@@ -61,6 +64,8 @@ const AttendanceCalculator = {
           dayAbsent++;
           subjectStatsMap[subj].conducted++;
           subjectStatsMap[subj].missed++;
+        } else if (p.status === 'no_class' || p.status === 'cancelled') {
+          subjectStatsMap[subj].noClass = (subjectStatsMap[subj].noClass || 0) + 1;
         }
         // 'cancelled' or 'no_class' does not count towards conducted
       });
@@ -139,7 +144,13 @@ const AttendanceCalculator = {
     // Calculate current attendance streak (consecutive working days with 0 absences)
     let attendanceStreak = 0;
     const sortedDatesDesc = Object.keys(records)
-      .filter((d) => !records[d].isHoliday && (records[d].periods || []).length > 0)
+      .filter((d) => {
+        const rec = records[d];
+        if (!rec || rec.isHoliday || rec.isNoClass) return false;
+        const periods = rec.periods || [];
+        const conducted = periods.filter((p) => p.status === 'present' || p.status === 'absent').length;
+        return conducted > 0;
+      })
       .sort()
       .reverse();
 
@@ -278,19 +289,24 @@ const AttendanceCalculator = {
    */
   getDaySummary(dayRecord) {
     if (!dayRecord) {
-      return { status: 'unmarked', present: 0, absent: 0, total: 0, percentage: 0 };
+      return { status: 'unmarked', present: 0, absent: 0, noClass: 0, total: 0, percentage: 0 };
     }
     if (dayRecord.isHoliday) {
-      return { status: 'holiday', present: 0, absent: 0, total: 0, percentage: 0, reason: dayRecord.holidayReason || 'Holiday' };
+      return { status: 'holiday', present: 0, absent: 0, noClass: 0, total: 0, percentage: 0, reason: dayRecord.holidayReason || 'Holiday' };
+    }
+    if (dayRecord.isNoClass) {
+      return { status: 'no_class', present: 0, absent: 0, noClass: (dayRecord.periods || []).length, total: 0, percentage: 0, reason: dayRecord.note || 'No Classes Held' };
     }
 
     const periods = dayRecord.periods || [];
     let present = 0;
     let absent = 0;
+    let noClass = 0;
 
     periods.forEach((p) => {
       if (p.status === 'present') present++;
-      if (p.status === 'absent') absent++;
+      else if (p.status === 'absent') absent++;
+      else if (p.status === 'no_class' || p.status === 'cancelled') noClass++;
     });
 
     const total = present + absent;
@@ -301,12 +317,15 @@ const AttendanceCalculator = {
       if (absent === 0) status = 'full_present';
       else if (present === 0) status = 'full_absent';
       else status = 'partial';
+    } else if (noClass > 0) {
+      status = 'no_class';
     }
 
     return {
       status,
       present,
       absent,
+      noClass,
       total,
       percentage
     };

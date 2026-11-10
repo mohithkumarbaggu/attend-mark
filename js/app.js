@@ -38,6 +38,7 @@ const App = {
       AppNotifications.showToast('Welcome to My Attendance Tracker! Sample data loaded.', 'info');
     }
 
+    this.updateHeaderGreeting();
     this.renderCurrentView();
     this.updateUserProfileInSidebar();
     this.checkAuthStatus();
@@ -768,6 +769,12 @@ const App = {
      1. DASHBOARD VIEW
      ========================================================================== */
   renderDashboard() {
+    this.updateHeaderGreeting();
+    const greetingContainer = document.getElementById('header-greeting-container');
+    const titleEl = document.getElementById('header-page-title');
+    if (greetingContainer) greetingContainer.style.display = 'flex';
+    if (titleEl) titleEl.style.display = 'none';
+
     const settings = AppStorage.getSettings();
     const records = AppStorage.getRecords();
     const stats = AttendanceCalculator.calculateStats(records, settings);
@@ -942,12 +949,15 @@ const App = {
       let badgeHtml = '';
       if (rec.isHoliday) {
         badgeHtml = `<span class="badge badge-holiday">Holiday (${rec.holidayReason || 'Campus Closed'})</span>`;
+      } else if (rec.isNoClass || summary.status === 'no_class') {
+        badgeHtml = `<span class="badge badge-secondary">⊘ No Class (0 conducted)</span>`;
       } else if (summary.status === 'full_present') {
         badgeHtml = `<span class="badge badge-present">✓ All ${summary.present} Present</span>`;
       } else if (summary.status === 'full_absent') {
         badgeHtml = `<span class="badge badge-absent">✕ ${summary.absent} Absent</span>`;
       } else {
-        badgeHtml = `<span class="badge badge-partial">⚠ ${summary.present} Present, ${summary.absent} Absent (${summary.percentage}%)</span>`;
+        const noClassNote = summary.noClass ? `, ${summary.noClass} No Class` : '';
+        badgeHtml = `<span class="badge badge-partial">⚠ ${summary.present} Present, ${summary.absent} Absent${noClassNote} (${summary.percentage}%)</span>`;
       }
 
       html += `
@@ -1034,6 +1044,13 @@ const App = {
       });
     }
 
+    const markAllNoClassBtn = document.getElementById('btn-mark-all-noclass');
+    if (markAllNoClassBtn) {
+      markAllNoClassBtn.addEventListener('click', () => {
+        this.bulkSetAllPeriods('no_class');
+      });
+    }
+
     const clearDayBtn = document.getElementById('btn-clear-day-attendance');
     if (clearDayBtn) {
       clearDayBtn.addEventListener('click', () => {
@@ -1075,10 +1092,12 @@ const App = {
     document.querySelectorAll('.period-card').forEach((card) => {
       const presBtn = card.querySelector('.btn-mark-present');
       const absBtn = card.querySelector('.btn-mark-absent');
+      const noClassBtn = card.querySelector('.btn-mark-noclass');
 
-      card.classList.remove('status-present', 'status-absent');
+      card.classList.remove('status-present', 'status-absent', 'status-noclass');
       if (presBtn) presBtn.classList.remove('active-present');
       if (absBtn) absBtn.classList.remove('active-absent');
+      if (noClassBtn) noClassBtn.classList.remove('active-noclass');
 
       if (status === 'present') {
         card.classList.add('status-present');
@@ -1088,6 +1107,10 @@ const App = {
         card.classList.add('status-absent');
         if (absBtn) absBtn.classList.add('active-absent');
         card.dataset.status = 'absent';
+      } else if (status === 'no_class') {
+        card.classList.add('status-noclass');
+        if (noClassBtn) noClassBtn.classList.add('active-noclass');
+        card.dataset.status = 'no_class';
       }
     });
 
@@ -1135,16 +1158,18 @@ const App = {
 
     for (let p = 1; p <= periodsPerDay; p++) {
       const existingPeriod = record?.periods?.find((item) => item.periodNumber === p);
-      const status = existingPeriod?.status || 'present'; // Default to present for frictionless marking
+      const status = existingPeriod?.status || (record?.isNoClass ? 'no_class' : 'present');
       const defaultSubject = defaultDaySubjects[p - 1] || `Period ${p}`;
       const subject = existingPeriod?.subject || defaultSubject;
       const timing = existingPeriod?.time || settings.periodTimings?.[p - 1] || `Period ${p}`;
 
       const isPresent = status === 'present';
       const isAbsent = status === 'absent';
+      const isNoClass = status === 'no_class' || status === 'cancelled';
+      const statusClass = isPresent ? 'status-present' : isAbsent ? 'status-absent' : isNoClass ? 'status-noclass' : '';
 
       cardsHtml += `
-        <div class="period-card ${isPresent ? 'status-present' : isAbsent ? 'status-absent' : ''}" data-period="${p}" data-status="${status}">
+        <div class="period-card ${statusClass}" data-period="${p}" data-status="${status}">
           <div class="period-info-side">
             <div class="period-number-badge">P${p}</div>
             <div class="period-details">
@@ -1153,13 +1178,17 @@ const App = {
             </div>
           </div>
           <div class="period-toggle-buttons">
-            <button type="button" class="btn-period-mark btn-mark-present ${isPresent ? 'active-present' : ''}" onclick="App.setPeriodStatus(${p}, 'present')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Present
+            <button type="button" class="btn-period-mark btn-mark-present ${isPresent ? 'active-present' : ''}" onclick="App.setPeriodStatus(${p}, 'present')" title="Attended class">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Present</span>
             </button>
-            <button type="button" class="btn-period-mark btn-mark-absent ${isAbsent ? 'active-absent' : ''}" onclick="App.setPeriodStatus(${p}, 'absent')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              Absent
+            <button type="button" class="btn-period-mark btn-mark-absent ${isAbsent ? 'active-absent' : ''}" onclick="App.setPeriodStatus(${p}, 'absent')" title="Missed class">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <span>Absent</span>
+            </button>
+            <button type="button" class="btn-period-mark btn-mark-noclass ${isNoClass ? 'active-noclass' : ''}" onclick="App.setPeriodStatus(${p}, 'no_class')" title="No class / free period / lecture cancelled">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              <span>No Class</span>
             </button>
           </div>
         </div>
@@ -1176,19 +1205,25 @@ const App = {
 
     const presBtn = card.querySelector('.btn-mark-present');
     const absBtn = card.querySelector('.btn-mark-absent');
+    const noClassBtn = card.querySelector('.btn-mark-noclass');
 
-    card.classList.remove('status-present', 'status-absent');
+    card.classList.remove('status-present', 'status-absent', 'status-noclass');
     presBtn?.classList.remove('active-present');
     absBtn?.classList.remove('active-absent');
+    noClassBtn?.classList.remove('active-noclass');
 
     if (status === 'present') {
       card.classList.add('status-present');
       presBtn?.classList.add('active-present');
       card.dataset.status = 'present';
-    } else {
+    } else if (status === 'absent') {
       card.classList.add('status-absent');
       absBtn?.classList.add('active-absent');
       card.dataset.status = 'absent';
+    } else if (status === 'no_class') {
+      card.classList.add('status-noclass');
+      noClassBtn?.classList.add('active-noclass');
+      card.dataset.status = 'no_class';
     }
 
     this.updateMarkingSummaryPill();
@@ -1207,15 +1242,24 @@ const App = {
 
     let present = 0;
     let absent = 0;
+    let noClass = 0;
     document.querySelectorAll('.period-card').forEach((card) => {
       const st = card.dataset.status;
       if (st === 'present') present++;
       else if (st === 'absent') absent++;
+      else if (st === 'no_class' || st === 'cancelled') noClass++;
     });
 
     const total = present + absent;
+    if (total === 0 && noClass > 0) {
+      pill.textContent = `No Class (${noClass} periods free/cancelled — 0 conducted)`;
+      pill.style.color = '#64748B';
+      return;
+    }
+
     const pct = total > 0 ? ((present / total) * 100).toFixed(1) : '0.0';
-    pill.textContent = `Present: ${present} | Absent: ${absent} | Day's Attendance: ${pct}%`;
+    const noClassStr = noClass > 0 ? ` | No Class: ${noClass}` : '';
+    pill.textContent = `Present: ${present} | Absent: ${absent}${noClassStr} | Day's Attendance: ${pct}%`;
     pill.style.color = present === total ? 'var(--color-present)' : absent === total ? 'var(--color-absent)' : 'var(--accent-purple)';
   },
 
@@ -1225,12 +1269,18 @@ const App = {
     const note = document.getElementById('day-note-input')?.value.trim() || '';
 
     const periods = [];
+    let allNoClass = true;
+
     if (!isHoliday) {
       document.querySelectorAll('.period-card').forEach((card) => {
         const periodNum = Number(card.dataset.period);
         const status = card.dataset.status || 'present';
         const subject = card.querySelector('.period-subject-name')?.textContent || `Period ${periodNum}`;
         const time = card.querySelector('.period-time-slot')?.textContent || '';
+
+        if (status !== 'no_class' && status !== 'cancelled') {
+          allNoClass = false;
+        }
 
         periods.push({
           periodNumber: periodNum,
@@ -1241,8 +1291,11 @@ const App = {
       });
     }
 
+    const isNoClass = !isHoliday && periods.length > 0 && allNoClass;
+
     const saved = AppStorage.saveDayRecord(this.selectedDate, {
       isHoliday,
+      isNoClass,
       holidayReason,
       note,
       periods
@@ -1355,10 +1408,15 @@ const App = {
           monthHolidays++;
         } else {
           const summary = AttendanceCalculator.getDaySummary(rec);
-          statusClass = `status-${summary.status}`;
-          badgeText = `${summary.present}/${summary.total}`;
-          monthConducted += summary.total;
-          monthAttended += summary.present;
+          if (rec.isNoClass || summary.status === 'no_class') {
+            statusClass = 'status-noclass';
+            badgeText = 'No Class';
+          } else {
+            statusClass = `status-${summary.status}`;
+            badgeText = `${summary.present}/${summary.total}`;
+            monthConducted += summary.total;
+            monthAttended += summary.present;
+          }
         }
       }
 
@@ -1421,22 +1479,34 @@ const App = {
         let periodsHtml = '<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">';
         (record.periods || []).forEach((p) => {
           const isP = p.status === 'present';
+          const isA = p.status === 'absent';
+          const isNC = p.status === 'no_class' || p.status === 'cancelled';
+          const badgeClass = isP ? 'badge-present' : isA ? 'badge-absent' : 'badge-secondary';
+          const badgeText = isP ? 'Present' : isA ? 'Absent' : 'No Class';
+
           periodsHtml += `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-tertiary); border-radius: 6px;">
               <div>
                 <span style="font-weight: 700; margin-right: 8px;">P${p.periodNumber}</span>
                 <span>${p.subject}</span>
               </div>
-              <span class="badge ${isP ? 'badge-present' : 'badge-absent'}">${isP ? 'Present' : 'Absent'}</span>
+              <span class="badge ${badgeClass}">${badgeText}</span>
             </div>
           `;
         });
         periodsHtml += '</div>';
 
+        const isNoClassDay = record.isNoClass || summary.status === 'no_class';
+        const statusBadge = isNoClassDay
+          ? '<span class="badge badge-secondary">No Classes Held (0 conducted)</span>'
+          : `<span class="badge ${summary.status === 'full_present' ? 'badge-present' : summary.status === 'full_absent' ? 'badge-absent' : 'badge-partial'}">${summary.percentage}% Attendance</span>`;
+
+        const noClassText = summary.noClass > 0 ? ` | No Class: ${summary.noClass}` : '';
+
         modalBody.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-weight: 600;">Conducted: ${summary.total} | Attended: ${summary.present}</span>
-            <span class="badge ${summary.status === 'full_present' ? 'badge-present' : summary.status === 'full_absent' ? 'badge-absent' : 'badge-partial'}">${summary.percentage}% Attendance</span>
+            <span style="font-weight: 600;">Conducted: ${summary.total} | Attended: ${summary.present}${noClassText}</span>
+            ${statusBadge}
           </div>
           ${periodsHtml}
           ${record.note ? `<div style="margin-top: 14px; font-size: 0.82rem; color: var(--text-muted);">Note: ${record.note}</div>` : ''}
@@ -1574,9 +1644,22 @@ const App = {
 
       const summary = AttendanceCalculator.getDaySummary(rec);
       let statusBadge = '';
-      if (summary.status === 'full_present') statusBadge = '<span class="badge badge-present">Full Present</span>';
+      if (rec.isNoClass || summary.status === 'no_class') statusBadge = '<span class="badge badge-secondary">No Class</span>';
+      else if (summary.status === 'full_present') statusBadge = '<span class="badge badge-present">Full Present</span>';
       else if (summary.status === 'full_absent') statusBadge = '<span class="badge badge-absent">Full Absent</span>';
       else statusBadge = '<span class="badge badge-partial">Partial</span>';
+
+      const isNoClassDay = rec.isNoClass || summary.status === 'no_class';
+      const pctCellHtml = isNoClassDay
+        ? '<span style="color: var(--text-muted); font-size: 0.85rem;">-</span>'
+        : `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 700; width: 44px;">${summary.percentage}%</span>
+            <div class="progress-bar-container" style="width: 60px; height: 6px; margin: 0;">
+              <div class="progress-bar-fill" style="width: ${summary.percentage}%; background: ${summary.percentage >= 75 ? 'var(--color-present)' : 'var(--color-absent)'};"></div>
+            </div>
+          </div>
+        `;
 
       rowsHtml += `
         <tr>
@@ -1589,12 +1672,7 @@ const App = {
           <td style="color: var(--color-present); font-weight: 600;">${summary.present}</td>
           <td style="color: var(--color-absent); font-weight: 600;">${summary.absent}</td>
           <td>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 700; width: 44px;">${summary.percentage}%</span>
-              <div class="progress-bar-container" style="width: 60px; height: 6px; margin: 0;">
-                <div class="progress-bar-fill" style="width: ${summary.percentage}%; background: ${summary.percentage >= 75 ? 'var(--color-present)' : 'var(--color-absent)'};"></div>
-              </div>
-            </div>
+            ${pctCellHtml}
           </td>
           <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             ${rec.note || '-'}

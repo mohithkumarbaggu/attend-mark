@@ -66,6 +66,8 @@ const AttendanceExport = {
         } else if (p.status === 'absent') {
           abs++;
           periodStrs.push(`P${p.periodNumber}:Absent`);
+        } else if (p.status === 'no_class' || p.status === 'cancelled') {
+          periodStrs.push(`P${p.periodNumber}:NoClass`);
         }
       });
 

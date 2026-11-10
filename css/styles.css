@@ -1026,6 +1026,11 @@ input:checked + .slider:before {
   background: var(--color-absent-light);
 }
 
+.period-card.status-noclass {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(148, 163, 184, 0.1);
+}
+
 .period-info-side {
   display: flex;
   align-items: center;
@@ -1112,6 +1117,12 @@ input:checked + .slider:before {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
+.btn-period-mark.active-noclass {
+  background: #64748B;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.35);
+}
+
 /* Day Notes & Bottom Bar */
 .day-note-input {
   width: 100%;
@@ -1182,6 +1193,7 @@ input:checked + .slider:before {
 .legend-dot.green { background: var(--color-present); }
 .legend-dot.red { background: var(--color-absent); }
 .legend-dot.yellow { background: var(--color-warning); }
+.legend-dot.slate { background: #64748B; }
 .legend-dot.grey { background: var(--color-holiday); }
 .legend-dot.blue { background: var(--color-blue); }
 
@@ -1248,6 +1260,12 @@ input:checked + .slider:before {
 .calendar-cell.status-holiday {
   background: var(--color-holiday-light);
   border-color: var(--border-subtle);
+}
+
+.calendar-cell.status-no_class,
+.calendar-cell.status-noclass {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.35);
 }
 
 .cell-day-num {
@@ -1907,15 +1925,17 @@ input:checked + .slider:before {
   .period-toggle-buttons {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 4px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    padding: 3px;
   }
 
   .btn-period-mark {
     width: 100%;
-    min-height: 40px; /* Touch target HIG compliant */
-    font-size: 0.84rem;
+    min-height: 38px; /* Touch target HIG compliant */
+    font-size: 0.76rem;
+    padding: 6px 4px;
+    gap: 4px;
   }
 
   /* Date Control Bar on Mobile */
@@ -1943,7 +1963,7 @@ input:checked + .slider:before {
   .marking-quick-actions {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
   }
 

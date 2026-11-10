@@ -81,10 +81,12 @@ const AttendanceCharts = {
       const day = records[d];
       let pres = 0;
       let abs = 0;
-      (day.periods || []).forEach((p) => {
-        if (p.status === 'present') pres++;
-        if (p.status === 'absent') abs++;
-      });
+      if (day && !day.isHoliday && !day.isNoClass) {
+        (day.periods || []).forEach((p) => {
+          if (p.status === 'present') pres++;
+          if (p.status === 'absent') abs++;
+        });
+      }
       if (pres + abs > maxVal) maxVal = pres + abs;
       // Format short date (e.g. "Mon 10")
       const dateObj = new Date(d + 'T00:00:00');
@@ -180,10 +182,12 @@ const AttendanceCharts = {
       const day = records[d];
       let pCount = 0;
       let aCount = 0;
-      (day.periods || []).forEach((p) => {
-        if (p.status === 'present') pCount++;
-        if (p.status === 'absent') aCount++;
-      });
+      if (day && !day.isHoliday && !day.isNoClass) {
+        (day.periods || []).forEach((p) => {
+          if (p.status === 'present') pCount++;
+          if (p.status === 'absent') aCount++;
+        });
+      }
       cumA += pCount;
       cumC += (pCount + aCount);
       if (cumC > 0) {
