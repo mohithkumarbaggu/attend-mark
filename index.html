@@ -1233,7 +1233,19 @@
           <span class="face-scanner-status-msg" id="face-scanner-status-msg">Initializing camera...</span>
         </div>
 
-        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 16px;">
+        <!-- Fallback for Local Wi-Fi HTTP (iOS/Android block live WebRTC over plain HTTP) -->
+        <div id="face-scanner-http-fallback" style="display: none; margin-top: 14px; flex-direction: column; gap: 8px;">
+          <input type="file" id="face-camera-file-input" accept="image/*" capture="user" style="display: none;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-native-camera-snap" style="width: 100%;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Take Selfie with Phone Camera</span>
+          </button>
+          <a href="https://mohithkumarbaggu.github.io/attend-mark/" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none; font-size: 0.78rem;">
+            🌐 Open HTTPS Version for Live Video
+          </a>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px;">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-face-scan">
             Use PIN Instead
           </button>

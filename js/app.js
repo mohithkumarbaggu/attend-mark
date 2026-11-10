@@ -190,9 +190,91 @@ const App = {
 
     if (closeBtn) closeBtn.addEventListener('click', handleClose);
     if (cancelBtn) cancelBtn.addEventListener('click', handleClose);
+
+    // 4. Native Camera Capture Fallback (for plain HTTP / Local Wi-Fi)
+    const nativeSnapBtn = document.getElementById('btn-native-camera-snap');
+    const cameraFileInput = document.getElementById('face-camera-file-input');
+
+    if (nativeSnapBtn && cameraFileInput) {
+      nativeSnapBtn.addEventListener('click', () => {
+        cameraFileInput.click();
+      });
+
+      cameraFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const canvasEl = document.getElementById('face-scanner-canvas');
+        const statusMsg = document.getElementById('face-scanner-status-msg');
+        const viewfinder = document.getElementById('face-scanner-viewfinder');
+        const flashBadge = document.getElementById('face-hud-flash-badge');
+        const flashText = document.getElementById('face-hud-flash-text');
+        const settings = AppStorage.getSettings();
+        const currentStudent = (settings.studentName || 'Student').trim();
+
+        if (statusMsg) statusMsg.textContent = 'Processing selfie biometric features...';
+
+        try {
+          const result = await FaceBiometrics.processSelfieFile(file, canvasEl, 200);
+
+          if (this.currentFaceModalMode === 'enroll') {
+            const faceRecord = {
+              studentName: currentStudent,
+              enrolledAt: new Date().toISOString(),
+              descriptor: result.descriptor,
+              photoDataUrl: result.photoDataUrl
+            };
+            FaceBiometrics.saveEnrolledFace(faceRecord);
+            this.renderBiometricSettings();
+
+            if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
+            if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
+            if (statusMsg) statusMsg.textContent = `Face enrolled for ${currentStudent}!`;
+            AppNotifications.showToast(`Face enrolled successfully for ${currentStudent}!`, 'success');
+
+            setTimeout(() => this.closeFaceScannerModal(), 1200);
+          } else {
+            // Unlock / Test Mode
+            const enrolled = FaceBiometrics.getEnrolledFace();
+            if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
+              if (statusMsg) statusMsg.textContent = `No face enrolled for "${currentStudent}".`;
+              AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN first.`, 'warning');
+              return;
+            }
+
+            const similarity = FaceBiometrics.calculateSimilarity(result.descriptor, enrolled.descriptor);
+
+            if (similarity >= 85) {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
+              if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
+              if (statusMsg) statusMsg.textContent = `Match Confirmed (${similarity}%)! Identity Verified.`;
+
+              if (this.currentFaceModalMode === 'test') {
+                AppNotifications.showToast(`Face Confirmed (${similarity}% match)!`, 'success');
+                setTimeout(() => this.closeFaceScannerModal(), 1200);
+              } else {
+                AppStorage.unlock();
+                this.hideAuthOverlay();
+                AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+                setTimeout(() => this.closeFaceScannerModal(), 800);
+              }
+            } else {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
+              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${similarity}%). Access Denied.`;
+              AppNotifications.showToast(`Access Denied: Face does not match ${enrolled.studentName}.`, 'error');
+            }
+          }
+        } catch (err) {
+          if (statusMsg) statusMsg.textContent = 'Failed to process photo.';
+          AppNotifications.showToast('Error processing captured photo.', 'error');
+        }
+      });
+    }
   },
 
   async openFaceScannerModal(mode = 'unlock') {
+    this.currentFaceModalMode = mode;
     const modal = document.getElementById('modal-face-scanner');
     const videoEl = document.getElementById('face-scanner-video');
     const canvasEl = document.getElementById('face-scanner-canvas');
@@ -203,6 +285,7 @@ const App = {
     const flashText = document.getElementById('face-hud-flash-text');
     const viewfinder = document.getElementById('face-scanner-viewfinder');
     const scanBeam = document.getElementById('face-hud-scan-beam');
+    const httpFallback = document.getElementById('face-scanner-http-fallback');
 
     if (!modal || !videoEl || !canvasEl) return;
 
@@ -211,6 +294,7 @@ const App = {
     viewfinder.className = 'face-scanner-viewfinder';
     if (scanBeam) scanBeam.style.display = 'block';
     if (flashBadge) flashBadge.style.display = 'none';
+    if (httpFallback) httpFallback.style.display = 'none';
 
     if (mode === 'enroll') {
       titleEl.textContent = 'Enroll Student Face';
@@ -229,8 +313,9 @@ const App = {
     try {
       await FaceBiometrics.startCamera(videoEl);
     } catch (err) {
-      statusMsg.textContent = 'Camera unavailable or permission denied.';
-      AppNotifications.showToast('Camera access denied. Please use PIN to unlock.', 'warning');
+      statusMsg.textContent = 'Mobile browsers block live video on plain HTTP.';
+      if (httpFallback) httpFallback.style.display = 'flex';
+      AppNotifications.showToast('Plain HTTP blocked live camera. Tap "Take Selfie" below or open HTTPS!', 'info', 6000);
       return;
     }
 
@@ -1911,9 +1996,91 @@ const App = {
 
     if (closeBtn) closeBtn.addEventListener('click', handleClose);
     if (cancelBtn) cancelBtn.addEventListener('click', handleClose);
+
+    // 4. Native Camera Capture Fallback (for plain HTTP / Local Wi-Fi)
+    const nativeSnapBtn = document.getElementById('btn-native-camera-snap');
+    const cameraFileInput = document.getElementById('face-camera-file-input');
+
+    if (nativeSnapBtn && cameraFileInput) {
+      nativeSnapBtn.addEventListener('click', () => {
+        cameraFileInput.click();
+      });
+
+      cameraFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const canvasEl = document.getElementById('face-scanner-canvas');
+        const statusMsg = document.getElementById('face-scanner-status-msg');
+        const viewfinder = document.getElementById('face-scanner-viewfinder');
+        const flashBadge = document.getElementById('face-hud-flash-badge');
+        const flashText = document.getElementById('face-hud-flash-text');
+        const settings = AppStorage.getSettings();
+        const currentStudent = (settings.studentName || 'Student').trim();
+
+        if (statusMsg) statusMsg.textContent = 'Processing selfie biometric features...';
+
+        try {
+          const result = await FaceBiometrics.processSelfieFile(file, canvasEl, 200);
+
+          if (this.currentFaceModalMode === 'enroll') {
+            const faceRecord = {
+              studentName: currentStudent,
+              enrolledAt: new Date().toISOString(),
+              descriptor: result.descriptor,
+              photoDataUrl: result.photoDataUrl
+            };
+            FaceBiometrics.saveEnrolledFace(faceRecord);
+            this.renderBiometricSettings();
+
+            if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
+            if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
+            if (statusMsg) statusMsg.textContent = `Face enrolled for ${currentStudent}!`;
+            AppNotifications.showToast(`Face enrolled successfully for ${currentStudent}!`, 'success');
+
+            setTimeout(() => this.closeFaceScannerModal(), 1200);
+          } else {
+            // Unlock / Test Mode
+            const enrolled = FaceBiometrics.getEnrolledFace();
+            if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
+              if (statusMsg) statusMsg.textContent = `No face enrolled for "${currentStudent}".`;
+              AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN first.`, 'warning');
+              return;
+            }
+
+            const similarity = FaceBiometrics.calculateSimilarity(result.descriptor, enrolled.descriptor);
+
+            if (similarity >= 85) {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
+              if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
+              if (statusMsg) statusMsg.textContent = `Match Confirmed (${similarity}%)! Identity Verified.`;
+
+              if (this.currentFaceModalMode === 'test') {
+                AppNotifications.showToast(`Face Confirmed (${similarity}% match)!`, 'success');
+                setTimeout(() => this.closeFaceScannerModal(), 1200);
+              } else {
+                AppStorage.unlock();
+                this.hideAuthOverlay();
+                AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+                setTimeout(() => this.closeFaceScannerModal(), 800);
+              }
+            } else {
+              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
+              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${similarity}%). Access Denied.`;
+              AppNotifications.showToast(`Access Denied: Face does not match ${enrolled.studentName}.`, 'error');
+            }
+          }
+        } catch (err) {
+          if (statusMsg) statusMsg.textContent = 'Failed to process photo.';
+          AppNotifications.showToast('Error processing captured photo.', 'error');
+        }
+      });
+    }
   },
 
   async openFaceScannerModal(mode = 'unlock') {
+    this.currentFaceModalMode = mode;
     const modal = document.getElementById('modal-face-scanner');
     const videoEl = document.getElementById('face-scanner-video');
     const canvasEl = document.getElementById('face-scanner-canvas');
@@ -1924,6 +2091,7 @@ const App = {
     const flashText = document.getElementById('face-hud-flash-text');
     const viewfinder = document.getElementById('face-scanner-viewfinder');
     const scanBeam = document.getElementById('face-hud-scan-beam');
+    const httpFallback = document.getElementById('face-scanner-http-fallback');
 
     if (!modal || !videoEl || !canvasEl) return;
 
@@ -1932,6 +2100,7 @@ const App = {
     viewfinder.className = 'face-scanner-viewfinder';
     if (scanBeam) scanBeam.style.display = 'block';
     if (flashBadge) flashBadge.style.display = 'none';
+    if (httpFallback) httpFallback.style.display = 'none';
 
     if (mode === 'enroll') {
       titleEl.textContent = 'Enroll Student Face';
@@ -1950,8 +2119,9 @@ const App = {
     try {
       await FaceBiometrics.startCamera(videoEl);
     } catch (err) {
-      statusMsg.textContent = 'Camera unavailable or permission denied.';
-      AppNotifications.showToast('Camera access denied. Please use PIN to unlock.', 'warning');
+      statusMsg.textContent = 'Mobile browsers block live video on plain HTTP.';
+      if (httpFallback) httpFallback.style.display = 'flex';
+      AppNotifications.showToast('Plain HTTP blocked live camera. Tap "Take Selfie" below or open HTTPS!', 'info', 6000);
       return;
     }
 

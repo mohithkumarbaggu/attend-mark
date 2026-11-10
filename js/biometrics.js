@@ -63,7 +63,7 @@ const FaceBiometrics = {
    */
   async startCamera(videoEl) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Camera is not supported on this device/browser');
+      throw new Error('CAMERA_INSECURE_OR_UNSUPPORTED');
     }
 
     this.stopCamera();
@@ -91,6 +91,35 @@ const FaceBiometrics = {
       await videoEl.play();
       return true;
     }
+  },
+
+  /**
+   * Process a captured selfie file (from native mobile camera input)
+   * Works on plain HTTP without requiring WebRTC / HTTPS permissions!
+   */
+  processSelfieFile(file, canvasEl, targetSize = 200) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          canvasEl.width = targetSize;
+          canvasEl.height = targetSize;
+          const ctx = canvasEl.getContext('2d');
+          const minDim = Math.min(img.width, img.height);
+          const startX = (img.width - minDim) / 2;
+          const startY = (img.height - minDim) / 2;
+          ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, targetSize, targetSize);
+          const descriptor = this.extractFaceDescriptor(canvasEl);
+          const photoDataUrl = canvasEl.toDataURL('image/jpeg', 0.85);
+          resolve({ descriptor, photoDataUrl });
+        };
+        img.onerror = () => reject(new Error('Failed to load captured selfie image'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read photo file'));
+      reader.readAsDataURL(file);
+    });
   },
 
   /**
