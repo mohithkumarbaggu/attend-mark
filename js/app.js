@@ -23,6 +23,7 @@ const App = {
     this.bindHistoryEvents();
     this.bindCalculatorEvents();
     this.bindSettingsEvents();
+    this.bindSupabaseEvents();
     this.bindModals();
 
     AppNotifications.init();
@@ -681,6 +682,14 @@ const App = {
 
     // Lock / Unlock Screen Profile
     this.updateAuthScreenProfile();
+
+    // Supabase Student & Cloud Partition Displays
+    const activeStudentEl = document.getElementById('supabase-active-student-display');
+    const partitionEl = document.getElementById('supabase-partition-display');
+    if (activeStudentEl) activeStudentEl.textContent = settings.studentName || 'Alex Morgan';
+    if (partitionEl && window.SupabaseSync) {
+      partitionEl.textContent = `${window.SupabaseSync.getStudentId(settings.studentName)}_*`;
+    }
   },
 
   updateHeaderGreeting() {
@@ -1933,6 +1942,118 @@ const App = {
         AppNotifications.showToast('Attendance Tracker locked.', 'info');
       });
     }
+  },
+
+  /**
+   * Bind Supabase Cloud Sync & Real-time Persistence Events
+   */
+  bindSupabaseEvents() {
+    if (typeof SupabaseSync !== 'undefined') {
+      SupabaseSync.init();
+    }
+
+    // 1. Header sync pill click
+    const headerPill = document.getElementById('header-sync-pill');
+    if (headerPill) {
+      headerPill.addEventListener('click', () => {
+        if (typeof SupabaseSync !== 'undefined') {
+          if (SupabaseSync.status === 'tables_missing') {
+            this.openSupabaseSetupModal();
+          } else {
+            SupabaseSync.syncAllLocalData(true);
+          }
+        }
+      });
+    }
+
+    // 2. Settings "Sync Now" button
+    const syncNowBtn = document.getElementById('btn-supabase-sync-now');
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener('click', () => {
+        if (typeof SupabaseSync !== 'undefined') {
+          SupabaseSync.syncAllLocalData(true);
+        }
+      });
+    }
+
+    // 3. Settings "Pull from Cloud" button
+    const pullBtn = document.getElementById('btn-supabase-pull');
+    if (pullBtn) {
+      pullBtn.addEventListener('click', async () => {
+        if (typeof SupabaseSync !== 'undefined') {
+          AppNotifications.showToast('Pulling data from Supabase Cloud...', 'info');
+          const res = await SupabaseSync.pullRemoteData();
+          if (res.success) {
+            AppNotifications.showToast(`Cloud data restored! (${res.count || 0} dates updated)`, 'success');
+            this.renderCurrentView();
+            this.updateUserProfileInSidebar();
+          } else {
+            AppNotifications.showToast(`Failed to pull data: ${res.error || 'Check connection'}`, 'error');
+          }
+        }
+      });
+    }
+
+    // 4. Open SQL Setup Modal triggers
+    const openSetupBtn = document.getElementById('btn-open-supabase-setup');
+    if (openSetupBtn) {
+      openSetupBtn.addEventListener('click', () => this.openSupabaseSetupModal());
+    }
+
+    const bannerSetupBtn = document.getElementById('btn-banner-setup-sql');
+    if (bannerSetupBtn) {
+      bannerSetupBtn.addEventListener('click', () => this.openSupabaseSetupModal());
+    }
+
+    // 5. Copy SQL button in modal
+    const copySqlBtn = document.getElementById('btn-copy-sql-schema');
+    if (copySqlBtn) {
+      copySqlBtn.addEventListener('click', () => {
+        if (typeof SupabaseSync !== 'undefined') {
+          const sql = SupabaseSync.getSchemaSQL();
+          navigator.clipboard.writeText(sql).then(() => {
+            const lbl = document.getElementById('btn-copy-sql-label');
+            if (lbl) lbl.textContent = 'Copied to Clipboard!';
+            AppNotifications.showToast('SQL query copied! Paste and run it in Supabase SQL Editor.', 'success');
+            setTimeout(() => {
+              if (lbl) lbl.textContent = 'Copy SQL Query';
+            }, 3000);
+          }).catch(() => {
+            AppNotifications.showToast('Could not copy automatically. Select and copy code manually.', 'warning');
+          });
+        }
+      });
+    }
+
+    // 6. Test connection button in modal
+    const testAfterBtn = document.getElementById('btn-test-supabase-after-setup');
+    if (testAfterBtn) {
+      testAfterBtn.addEventListener('click', async () => {
+        if (typeof SupabaseSync !== 'undefined') {
+          AppNotifications.showToast('Testing Supabase tables...', 'info');
+          const res = await SupabaseSync.checkConnection();
+          if (res.status === 'connected') {
+            AppNotifications.showToast('Connected! Tables verified successfully.', 'success');
+            this.closeModal('supabase-setup-modal');
+            SupabaseSync.syncAllLocalData(true);
+          } else if (res.status === 'tables_missing') {
+            AppNotifications.showToast('Tables still not detected. Please make sure to click "Run" in Supabase SQL Editor.', 'warning');
+          } else {
+            AppNotifications.showToast(`Connection status: ${res.status} (${res.message})`, 'error');
+          }
+        }
+      });
+    }
+  },
+
+  openSupabaseSetupModal() {
+    if (typeof SupabaseSync !== 'undefined') {
+      const codeEl = document.getElementById('supabase-sql-code-display');
+      if (codeEl) {
+        codeEl.textContent = SupabaseSync.getSchemaSQL();
+      }
+    }
+    this.openModal('supabase-setup-modal');
   },
 
   /**

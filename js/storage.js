@@ -110,6 +110,9 @@ const AppStorage = {
     const state = this.getState();
     state.settings = { ...state.settings, ...newSettings };
     this.saveState(state);
+    if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
+      window.SupabaseSync.syncStudentProfile().catch(() => {});
+    }
     return state.settings;
   },
 
@@ -147,6 +150,9 @@ const AppStorage = {
     };
 
     this.saveState(state);
+    if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncDayRecord) {
+      window.SupabaseSync.syncDayRecord(dateStr, state.records[dateStr]).catch(() => {});
+    }
     return state.records[dateStr];
   },
 
@@ -237,6 +243,9 @@ const AppStorage = {
       }
     };
     this.saveState(state);
+    if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
+      window.SupabaseSync.syncStudentProfile(profileData).catch(() => {});
+    }
     return this.unlock(profileData.pin || '1234');
   },
 

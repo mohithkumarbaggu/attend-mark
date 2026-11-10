@@ -230,6 +230,10 @@
         </div>
 
         <div class="header-right">
+          <button type="button" class="header-sync-pill" id="header-sync-pill" title="Supabase Cloud Sync Status">
+            <span class="sync-dot" id="header-sync-dot"></span>
+            <span class="sync-label" id="header-sync-label">Cloud</span>
+          </button>
           <button type="button" class="header-avatar-btn" id="header-avatar-btn" title="View Profile & Settings" onclick="App.switchView('settings')">
             <span class="header-avatar-initials" id="header-user-avatar">AM</span>
           </button>
@@ -1075,6 +1079,76 @@
                 </div>
               </div>
 
+              <!-- Supabase Cloud Sync Card (Full Width) -->
+              <div class="card chart-card-full">
+                <div class="card-header">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                      </svg>
+                      <h3 class="card-title" style="margin: 0;">Supabase Cloud Sync</h3>
+                    </div>
+                    <p class="card-subtitle">Real-time cloud database backup & cross-device persistence for student profile, biometrics, and attendance</p>
+                  </div>
+                  <span class="badge" id="supabase-status-badge">Checking...</span>
+                </div>
+
+                <!-- Database Setup Alert Banner (Visible when tables missing) -->
+                <div class="supabase-status-banner warning" id="supabase-setup-banner" style="display: none;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span><b>Database tables not found in Supabase!</b> Run the quick 1-click SQL setup script in your project to enable cloud sync.</span>
+                  </div>
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-banner-setup-sql" style="white-space: nowrap; margin-left: auto;">
+                    Setup Database (SQL)
+                  </button>
+                </div>
+
+                <!-- Supabase Cloud Metadata Summary -->
+                <div class="supabase-kv-list">
+                  <div class="supabase-kv-item">
+                    <div class="supabase-kv-label">Project URL</div>
+                    <div class="supabase-kv-value" style="font-size: 0.76rem; font-family: monospace;">https://tiqwozykukchvzxizuwa.supabase.co</div>
+                  </div>
+                  <div class="supabase-kv-item">
+                    <div class="supabase-kv-label">Active Student Profile</div>
+                    <div class="supabase-kv-value" id="supabase-active-student-display">Alex Morgan</div>
+                  </div>
+                  <div class="supabase-kv-item">
+                    <div class="supabase-kv-label">Cloud Record Partition</div>
+                    <div class="supabase-kv-value" id="supabase-partition-display" style="font-family: monospace;">alex_morgan_*</div>
+                  </div>
+                  <div class="supabase-kv-item">
+                    <div class="supabase-kv-label">Last Cloud Backup</div>
+                    <div class="supabase-kv-value" id="supabase-last-sync-time">Never</div>
+                  </div>
+                </div>
+
+                <!-- Description / Status Note -->
+                <p id="supabase-status-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+                  All attendance records, timetable settings, and facial biometric vectors will sync to your Supabase project.
+                </p>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-primary" id="btn-supabase-sync-now">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>Sync All Data to Cloud</span>
+                  </button>
+
+                  <button type="button" class="btn btn-secondary" id="btn-supabase-pull">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Pull from Cloud to Device</span>
+                  </button>
+
+                  <button type="button" class="btn btn-secondary" id="btn-open-supabase-setup">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span>Setup Database (SQL)</span>
+                  </button>
+                </div>
+              </div>
+
               <!-- Data Management & Test Suite (Full Width) -->
               <div class="card chart-card-full">
                 <div class="card-header">
@@ -1254,10 +1328,79 @@
     </div>
   </div>
 
+  <!-- SUPABASE DATABASE SETUP SQL MODAL -->
+  <div class="modal-overlay" id="supabase-setup-modal">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+            <span>Setup Supabase Database</span>
+          </h3>
+          <p class="modal-subtitle">Follow these 3 simple steps to activate cloud sync in your Supabase project</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-purple); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0;">1</div>
+            <div>
+              <span style="font-weight: 600; font-size: 0.9rem;">Open SQL Editor in your Supabase project</span>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Click the button below to open your project's query editor.</p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-purple); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0;">2</div>
+            <div>
+              <span style="font-weight: 600; font-size: 0.9rem;">Copy & Paste the SQL code</span>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Click "Copy SQL Query" and paste it into the editor box in Supabase.</p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent-purple); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0;">3</div>
+            <div>
+              <span style="font-weight: 600; font-size: 0.9rem;">Click "Run" in Supabase</span>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Once executed, your tables are active! AttendMark will immediately begin backing up your attendance & biometrics.</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+          <a href="https://supabase.com/dashboard/project/tiqwozykukchvzxizuwa/sql/new" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            <span>Open Supabase SQL Editor ↗</span>
+          </a>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-sql-schema">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="btn-copy-sql-label">Copy SQL Query</span>
+          </button>
+        </div>
+
+        <div class="sql-code-container">
+          <pre><code id="supabase-sql-code-display">-- AttendMark Schema Loading...</code></pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btn-test-supabase-after-setup">
+          <span>I've Run the Query &mdash; Test Connection Now</span>
+        </button>
+        <button type="button" class="btn btn-secondary" data-close-modal>
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Application Scripts -->
   <script src="js/calculator.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/biometrics.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/export.js"></script>
   <script src="js/notifications.js"></script>

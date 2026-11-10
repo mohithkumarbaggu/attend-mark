@@ -45,10 +45,16 @@ const FaceBiometrics = {
 
   saveEnrolledFace(faceData) {
     localStorage.setItem(this.STORAGE_KEY_FACE, JSON.stringify(faceData));
+    if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
+      window.SupabaseSync.syncStudentProfile().catch(() => {});
+    }
   },
 
   removeEnrolledFace() {
     localStorage.removeItem(this.STORAGE_KEY_FACE);
+    if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
+      window.SupabaseSync.syncStudentProfile().catch(() => {});
+    }
   },
 
   isFaceEnrolledForAccount(studentName) {
