@@ -1522,12 +1522,50 @@ input:checked + .slider:before {
   border: 1px solid var(--border-card);
   border-radius: var(--radius-xl);
   padding: 32px 24px;
-  max-width: 420px;
+  max-width: 440px;
   width: 100%;
   box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--border-card);
   animation: authCardPop 0.32s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-with-icon .input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-with-icon .form-input {
+  padding-left: 38px;
+  width: 100%;
+}
+
+.btn-toggle-password {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  transition: color var(--transition-fast);
+}
+
+.btn-toggle-password:hover {
+  color: var(--accent-purple);
 }
 
 @keyframes authCardPop {

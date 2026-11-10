@@ -651,3 +651,4 @@ ON public.attendance_records FOR ALL USING (true) WITH CHECK (true);
 };
 
 window.SupabaseSync = SupabaseSync;
+

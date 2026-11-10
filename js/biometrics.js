@@ -19,6 +19,7 @@ const FaceBiometrics = {
   scanTimer: null,
 
   STORAGE_KEY_FACE: 'attendmark_enrolled_face_data',
+  STORAGE_KEY_FACES_REGISTRY: 'attendmark_enrolled_faces_registry',
   STORAGE_KEY_SETTINGS: 'attendmark_biometric_prefs',
 
   getPreferences() {
@@ -43,8 +44,37 @@ const FaceBiometrics = {
     }
   },
 
+  getAllEnrolledFaces() {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY_FACES_REGISTRY);
+      const list = data ? JSON.parse(data) : [];
+      const current = this.getEnrolledFace();
+      if (current && !list.some(f => (f.studentName || '').toLowerCase() === (current.studentName || '').toLowerCase())) {
+        list.push(current);
+      }
+      return list;
+    } catch (e) {
+      const cur = this.getEnrolledFace();
+      return cur ? [cur] : [];
+    }
+  },
+
   saveEnrolledFace(faceData) {
     localStorage.setItem(this.STORAGE_KEY_FACE, JSON.stringify(faceData));
+
+    // Save to multi-face registry
+    try {
+      const reg = this.getAllEnrolledFaces();
+      const normName = (faceData.studentName || '').trim().toLowerCase();
+      const existingIdx = reg.findIndex(f => (f.studentName || '').trim().toLowerCase() === normName);
+      if (existingIdx >= 0) {
+        reg[existingIdx] = faceData;
+      } else {
+        reg.push(faceData);
+      }
+      localStorage.setItem(this.STORAGE_KEY_FACES_REGISTRY, JSON.stringify(reg));
+    } catch (e) {}
+
     if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
       window.SupabaseSync.syncStudentProfile().catch(() => {});
     }
@@ -55,6 +85,49 @@ const FaceBiometrics = {
     if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
       window.SupabaseSync.syncStudentProfile().catch(() => {});
     }
+  },
+
+  /**
+   * Find matching enrolled face across all student profiles
+   */
+  findMatchingFace(scannedDescriptor, targetStudentName = null) {
+    const allFaces = this.getAllEnrolledFaces();
+    if (!allFaces || allFaces.length === 0) {
+      return { match: false, similarity: 0, reason: 'NO_ENROLLED_FACES' };
+    }
+
+    let bestMatch = null;
+    let highestScore = 0;
+
+    for (const enrolled of allFaces) {
+      if (!enrolled.descriptor) continue;
+      // If target student name is specified, prioritize or check only that one
+      if (targetStudentName && (enrolled.studentName || '').toLowerCase().trim() !== targetStudentName.toLowerCase().trim()) {
+        continue;
+      }
+
+      const score = this.calculateSimilarity(scannedDescriptor, enrolled.descriptor);
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = enrolled;
+      }
+    }
+
+    if (highestScore >= 85 && bestMatch) {
+      return {
+        match: true,
+        similarity: highestScore,
+        studentName: bestMatch.studentName,
+        studentId: bestMatch.studentId,
+        faceData: bestMatch
+      };
+    }
+
+    return {
+      match: false,
+      similarity: highestScore,
+      bestMatch: bestMatch ? bestMatch.studentName : null
+    };
   },
 
   isFaceEnrolledForAccount(studentName) {
@@ -339,12 +412,13 @@ const FaceBiometrics = {
   /**
    * Enroll / Register student face strictly for the given student account
    */
-  enrollCurrentFace(videoEl, canvasEl, studentName) {
+  enrollCurrentFace(videoEl, canvasEl, studentName, studentId = null) {
     this.captureSnapshot(videoEl, canvasEl, 200);
     const descriptor = this.extractFaceDescriptor(canvasEl);
     const photoDataUrl = canvasEl.toDataURL('image/jpeg', 0.85);
 
     const faceRecord = {
+      studentId: (studentId || studentName || 'CS101').trim(),
       studentName: (studentName || 'Student').trim(),
       enrolledAt: new Date().toISOString(),
       descriptor,

@@ -183,9 +183,54 @@ const AppStorage = {
   },
 
   /**
+   * Multi-Account Registry for Student ID & Password Authentication
+   */
+  ACCOUNTS_REGISTRY_KEY: 'attendmark_accounts_registry',
+
+  getAccountsRegistry() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(this.ACCOUNTS_REGISTRY_KEY);
+        return raw ? JSON.parse(raw) : {};
+      }
+    } catch (e) {}
+    return {};
+  },
+
+  saveAccountToRegistry(studentId, studentName, pin, state) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const reg = this.getAccountsRegistry();
+        const normId = (studentId || studentName || 'student').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        reg[normId] = {
+          studentId: (studentId || normId).trim(),
+          studentName: studentName || 'Student',
+          pin: String(pin).trim(),
+          updatedAt: Date.now(),
+          state
+        };
+        window.localStorage.setItem(this.ACCOUNTS_REGISTRY_KEY, JSON.stringify(reg));
+      }
+    } catch (e) {}
+  },
+
+  /**
    * Session authentication state (persists during active browser tab session)
    */
   _sessionUnlocked: false,
+
+  persistSessionUnlocked(unlocked) {
+    this._sessionUnlocked = Boolean(unlocked);
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        if (unlocked) {
+          window.sessionStorage.setItem('attendmark_session_unlocked', 'true');
+        } else {
+          window.sessionStorage.removeItem('attendmark_session_unlocked');
+        }
+      }
+    } catch (e) {}
+  },
 
   isUnlocked() {
     const settings = this.getSettings();
@@ -200,53 +245,171 @@ const AppStorage = {
     return this._sessionUnlocked;
   },
 
+  /**
+   * Student ID & Password Authentication
+   * Authenticates against:
+   * 1. Current active local student
+   * 2. Local accounts registry
+   * 3. Supabase Cloud Database (if online)
+   */
+  async login(studentIdInput, passwordInput) {
+    const rawId = (studentIdInput || '').trim();
+    const rawPass = (passwordInput || '').trim();
+
+    if (!rawId || !rawPass) {
+      return { success: false, message: 'Please enter both Student ID and Password.' };
+    }
+
+    const normId = rawId.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const currentState = this.getState();
+    const curSettings = currentState.settings;
+    const curStudentId = (curSettings.security?.studentId || '').trim();
+    const curNormId = curStudentId ? curStudentId.toLowerCase().replace(/[^a-z0-9_-]/g, '_') : '';
+    const curNameNorm = (curSettings.studentName || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const currentPin = String(curSettings.security?.pin || '1234').trim();
+
+    // 1. Check current active profile
+    if (
+      (normId === curNormId || normId === curNameNorm || rawId.toLowerCase() === curStudentId.toLowerCase() || rawId.toLowerCase() === 'cs101') &&
+      rawPass === currentPin
+    ) {
+      this.persistSessionUnlocked(true);
+      return { success: true, student: curSettings };
+    }
+
+    // 2. Check local registered accounts
+    const accounts = this.getAccountsRegistry();
+    let matchedAcc = null;
+
+    if (accounts[normId]) {
+      matchedAcc = accounts[normId];
+    } else {
+      // Find case-insensitive match by studentId or studentName
+      for (const k of Object.keys(accounts)) {
+        const acc = accounts[k];
+        if (
+          (acc.studentId && acc.studentId.toLowerCase() === rawId.toLowerCase()) ||
+          (acc.studentName && acc.studentName.toLowerCase() === rawId.toLowerCase())
+        ) {
+          matchedAcc = acc;
+          break;
+        }
+      }
+    }
+
+    if (matchedAcc) {
+      if (String(matchedAcc.pin).trim() === rawPass) {
+        // Save previous account state before switching
+        if (curNormId) {
+          this.saveAccountToRegistry(curStudentId, curSettings.studentName, currentPin, currentState);
+        }
+        // Load matched account
+        this.saveState(matchedAcc.state);
+        this.persistSessionUnlocked(true);
+        return { success: true, student: matchedAcc.state.settings };
+      } else {
+        return { success: false, message: 'Incorrect Password. Please try again.' };
+      }
+    }
+
+    // 3. Fallback: Authenticate via Supabase Cloud (multi-device login)
+    if (typeof window !== 'undefined' && window.SupabaseSync && navigator.onLine) {
+      try {
+        const res = await window.SupabaseSync.fetchREST(`student_profiles?id=eq.${encodeURIComponent(normId)}`, 'GET');
+        if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+          const remote = res.data[0];
+          const remotePin = String(remote.pin || '1234').trim();
+          if (remotePin === rawPass) {
+            // Restore from Cloud
+            await window.SupabaseSync.pullRemoteData(remote.student_name || normId);
+            this.persistSessionUnlocked(true);
+            return { success: true, student: this.getSettings() };
+          } else {
+            return { success: false, message: 'Incorrect Password for this Student ID.' };
+          }
+        }
+      } catch (err) {
+        console.warn('Cloud login lookup error:', err);
+      }
+    }
+
+    // If default demo credentials
+    if ((rawId.toUpperCase() === 'CS101' || rawId.toLowerCase() === 'alex' || rawId.toLowerCase() === 'alex morgan') && rawPass === '1234') {
+      this.persistSessionUnlocked(true);
+      return { success: true, student: curSettings };
+    }
+
+    return {
+      success: false,
+      message: 'Student ID not found. Check your credentials or click "Register Account".'
+    };
+  },
+
+  /**
+   * Unlock with Face Biometrics
+   */
+  unlockWithBiometrics(studentName, studentId = null) {
+    this.persistSessionUnlocked(true);
+    return { success: true, studentName };
+  },
+
+  /**
+   * Legacy PIN unlock fallback
+   */
   unlock(enteredPin) {
     const settings = this.getSettings();
     const currentPin = settings.security?.pin || '1234';
     if (String(enteredPin).trim() === String(currentPin).trim()) {
-      this._sessionUnlocked = true;
-      try {
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          window.sessionStorage.setItem('attendmark_session_unlocked', 'true');
-        }
-      } catch (e) {}
+      this.persistSessionUnlocked(true);
       return { success: true };
     }
-    return { success: false, message: 'Incorrect PIN. Try again (Default: 1234).' };
+    return { success: false, message: 'Incorrect Password. Try again (Default: 1234).' };
   },
 
   lock() {
-    this._sessionUnlocked = false;
-    try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        window.sessionStorage.removeItem('attendmark_session_unlocked');
-      }
-    } catch (e) {}
+    this.persistSessionUnlocked(false);
+    return true;
+  },
+
+  logout() {
+    this.persistSessionUnlocked(false);
     return true;
   },
 
   createAccount(profileData) {
-    const state = this.getState();
-    state.settings = {
-      ...state.settings,
-      studentName: profileData.name || state.settings.studentName,
-      collegeName: profileData.college || state.settings.collegeName,
-      branch: profileData.branch || state.settings.branch,
-      academicYear: profileData.academicYear || state.settings.academicYear,
-      semester: profileData.semester || state.settings.semester,
-      targetPercentage: Number(profileData.targetPercentage) || state.settings.targetPercentage,
-      security: {
-        pin: profileData.pin || '1234',
-        studentId: profileData.studentId || '',
-        isRegistered: true,
-        requireLogin: true
-      }
+    const studentId = (profileData.studentId || profileData.name || 'CS101').trim();
+    const pin = String(profileData.pin || profileData.password || '1234').trim();
+
+    const currentState = this.getState();
+    const state = {
+      settings: {
+        ...this.defaultSettings,
+        studentName: profileData.name || 'Alex Morgan',
+        collegeName: profileData.college || '',
+        branch: profileData.branch || '',
+        academicYear: profileData.academicYear || '2026-2027',
+        semester: profileData.semester || 'Semester 1',
+        targetPercentage: Number(profileData.targetPercentage) || 75,
+        security: {
+          pin,
+          password: pin,
+          studentId,
+          isRegistered: true,
+          requireLogin: true
+        }
+      },
+      records: {}
     };
+
     this.saveState(state);
+    this.saveAccountToRegistry(studentId, profileData.name, pin, state);
+
     if (typeof window !== 'undefined' && window.SupabaseSync && window.SupabaseSync.syncStudentProfile) {
       window.SupabaseSync.syncStudentProfile(profileData).catch(() => {});
     }
-    return this.unlock(profileData.pin || '1234');
+
+    this.persistSessionUnlocked(true);
+    return { success: true };
   },
 
   changePin(currentPin, newPin) {

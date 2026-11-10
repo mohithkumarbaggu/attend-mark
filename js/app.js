@@ -46,30 +46,72 @@ const App = {
    * Bind Authentication & Login / Unlock Events
    */
   bindAuthEvents() {
-    // 1. Unlock form submission
+    // 1. Student ID & Password form submission
     const unlockForm = document.getElementById('auth-unlock-form');
     if (unlockForm) {
-      unlockForm.addEventListener('submit', (e) => {
+      unlockForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const pinInput = document.getElementById('auth-pin-input');
+        const studentIdInput = document.getElementById('auth-student-id-input');
+        const passwordInput = document.getElementById('auth-password-input');
         const errEl = document.getElementById('auth-unlock-error');
-        const pin = pinInput ? pinInput.value : '';
-        const res = AppStorage.unlock(pin);
+        const submitBtn = document.getElementById('btn-submit-student-login');
+
+        const studentId = studentIdInput ? studentIdInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : '';
+
+        if (!studentId || !password) {
+          if (errEl) {
+            errEl.textContent = 'Please enter both Student ID and Password.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<span>Signing in...</span>`;
+        }
+
+        const res = await AppStorage.login(studentId, password);
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <span>Log In to Account</span>
+          `;
+        }
+
         if (res.success) {
+          if (errEl) errEl.style.display = 'none';
           this.hideAuthOverlay();
-          AppNotifications.showToast(`Welcome back, ${AppStorage.getSettings().studentName}!`, 'success');
+          AppNotifications.showToast(`Welcome back, ${res.student?.studentName || 'Student'}!`, 'success');
           this.renderCurrentView();
           this.updateUserProfileInSidebar();
         } else {
           if (errEl) {
-            errEl.textContent = res.message;
+            errEl.textContent = res.message || 'Invalid Student ID or Password.';
             errEl.style.display = 'block';
           }
-          if (pinInput) {
-            pinInput.value = '';
-            pinInput.focus();
+          if (passwordInput) {
+            passwordInput.value = '';
+            passwordInput.focus();
           }
         }
+      });
+    }
+
+    // Toggle password visibility in login form
+    const togglePwdBtn = document.getElementById('btn-toggle-login-pwd');
+    if (togglePwdBtn) {
+      togglePwdBtn.addEventListener('click', () => {
+        const pwdInput = document.getElementById('auth-password-input');
+        if (!pwdInput) return;
+        const isPassword = pwdInput.type === 'password';
+        pwdInput.type = isPassword ? 'text' : 'password';
+        togglePwdBtn.innerHTML = isPassword
+          ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+          : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
       });
     }
 
@@ -79,6 +121,7 @@ const App = {
       regForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = document.getElementById('reg-name')?.value.trim();
+        const studentId = document.getElementById('reg-student-id')?.value.trim() || 'CS101';
         const college = document.getElementById('reg-college')?.value.trim();
         const branch = document.getElementById('reg-branch')?.value.trim();
         const semester = document.getElementById('reg-semester')?.value.trim();
@@ -87,6 +130,7 @@ const App = {
 
         AppStorage.createAccount({
           name,
+          studentId,
           college,
           branch,
           semester,
@@ -95,13 +139,13 @@ const App = {
         });
 
         this.hideAuthOverlay();
-        AppNotifications.showToast(`Account created! Welcome, ${name}.`, 'success');
+        AppNotifications.showToast(`Account created for ${name} (ID: ${studentId})!`, 'success');
         this.renderCurrentView();
         this.updateUserProfileInSidebar();
       });
     }
 
-    // 3. Switch between Unlock & Register views
+    // 3. Switch between Login & Register views
     const showRegBtn = document.getElementById('btn-show-register-view');
     if (showRegBtn) {
       showRegBtn.addEventListener('click', () => {
@@ -126,6 +170,18 @@ const App = {
         AppStorage.lock();
         this.showAuthOverlay();
         AppNotifications.showToast('Attendance Tracker locked.', 'info');
+      });
+    }
+
+    // 5. Settings Log Out Button
+    const logoutBtn = document.getElementById('btn-logout-settings');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('Log out from current student account?')) {
+          AppStorage.logout();
+          this.showAuthOverlay();
+          AppNotifications.showToast('Logged out successfully.', 'info');
+        }
       });
     }
   },
@@ -236,34 +292,25 @@ const App = {
             setTimeout(() => this.closeFaceScannerModal(), 1200);
           } else {
             // Unlock / Test Mode
-            const enrolled = FaceBiometrics.getEnrolledFace();
-            if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
-              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
-              if (statusMsg) statusMsg.textContent = `No face enrolled for "${currentStudent}".`;
-              AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN first.`, 'warning');
-              return;
-            }
-
-            const similarity = FaceBiometrics.calculateSimilarity(result.descriptor, enrolled.descriptor);
-
-            if (similarity >= 85) {
+            const matchRes = FaceBiometrics.findMatchingFace(result.descriptor, this.currentFaceModalMode === 'test' ? currentStudent : null);
+            if (matchRes.match) {
               if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
               if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
-              if (statusMsg) statusMsg.textContent = `Match Confirmed (${similarity}%)! Identity Verified.`;
+              if (statusMsg) statusMsg.textContent = `Match Confirmed (${matchRes.similarity}%)! Identity Verified.`;
 
               if (this.currentFaceModalMode === 'test') {
-                AppNotifications.showToast(`Face Confirmed (${similarity}% match)!`, 'success');
+                AppNotifications.showToast(`Face Confirmed for ${matchRes.studentName} (${matchRes.similarity}% match)!`, 'success');
                 setTimeout(() => this.closeFaceScannerModal(), 1200);
               } else {
-                AppStorage.unlock();
+                AppStorage.unlockWithBiometrics(matchRes.studentName, matchRes.studentId);
                 this.hideAuthOverlay();
-                AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+                AppNotifications.showToast(`Welcome back, ${matchRes.studentName}! (Biometric Verified)`, 'success');
                 setTimeout(() => this.closeFaceScannerModal(), 800);
               }
             } else {
               if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
-              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${similarity}%). Access Denied.`;
-              AppNotifications.showToast(`Access Denied: Face does not match ${enrolled.studentName}.`, 'error');
+              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${matchRes.similarity || 0}%). Access Denied.`;
+              AppNotifications.showToast('Access Denied: Face did not match any registered student.', 'error');
             }
           }
         } catch (err) {
@@ -355,24 +402,24 @@ const App = {
     }
 
     // Flow 2: Unlock / Test Mode
-    const enrolled = FaceBiometrics.getEnrolledFace();
+    const allFaces = FaceBiometrics.getAllEnrolledFaces();
 
-    // Strict Account Security: If no face is enrolled for this account, DO NOT auto-unlock!
-    if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+    // Strict Account Security: If no face is enrolled, notify user to use Student ID & Password
+    if (!allFaces || allFaces.length === 0) {
       viewfinder.className = 'face-scanner-viewfinder failed';
       if (scanBeam) scanBeam.style.display = 'none';
-      statusMsg.textContent = `No face enrolled for "${currentStudent}". Please use PIN to unlock.`;
-      AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN, then enroll in Settings.`, 'warning', 4000);
+      statusMsg.textContent = 'No biometric face enrolled yet. Please log in with Student ID & Password first.';
+      AppNotifications.showToast('No face enrolled yet. Sign in with Student ID & Password, then enroll in Settings.', 'info', 4000);
       
       setTimeout(() => {
         this.closeFaceScannerModal();
-        const pinInput = document.getElementById('auth-pin-input');
-        if (pinInput) pinInput.focus();
+        const idInput = document.getElementById('auth-student-id-input');
+        if (idInput) idInput.focus();
       }, 2000);
       return;
     }
 
-    // Strict Biometric Scan Loop: Only the genuine account holder's face will match
+    // Strict Biometric Scan Loop: Only genuine account holder's face will match (>= 85%)
     let scanAttempts = 0;
     const MAX_SCAN_ATTEMPTS = 20; // ~8 seconds max
     FaceBiometrics.isScanning = true;
@@ -383,12 +430,12 @@ const App = {
 
       FaceBiometrics.captureSnapshot(videoEl, canvasEl, 200);
       const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
-      const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
+      const matchRes = FaceBiometrics.findMatchingFace(currentDesc, mode === 'test' ? currentStudent : null);
 
-      statusMsg.textContent = `Matching: ${similarity}% confidence (85% required)...`;
+      statusMsg.textContent = `Matching: ${matchRes.similarity || 0}% confidence (85% required)...`;
 
       // STRICT THRESHOLD: Must achieve >= 85% biometric match
-      if (similarity >= 85) {
+      if (matchRes.match) {
         FaceBiometrics.isScanning = false;
         clearInterval(FaceBiometrics.scanTimer);
 
@@ -399,17 +446,17 @@ const App = {
           flashText.textContent = '✓';
         }
 
-        statusMsg.textContent = `Identity Verified: ${enrolled.studentName} (${similarity}% Match)!`;
+        statusMsg.textContent = `Identity Verified: ${matchRes.studentName} (${matchRes.similarity}% Match)!`;
 
         if (mode === 'test') {
-          AppNotifications.showToast(`Face match confirmed for ${enrolled.studentName} (${similarity}%)!`, 'success');
+          AppNotifications.showToast(`Face match confirmed for ${matchRes.studentName} (${matchRes.similarity}%)!`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 1200);
         } else {
-          AppStorage.unlock();
+          AppStorage.unlockWithBiometrics(matchRes.studentName, matchRes.studentId);
           this.hideAuthOverlay();
-          AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+          AppNotifications.showToast(`Welcome back, ${matchRes.studentName}! (Biometric Verified)`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 800);
@@ -421,15 +468,15 @@ const App = {
 
         viewfinder.className = 'face-scanner-viewfinder failed';
         if (scanBeam) scanBeam.style.display = 'none';
-        statusMsg.textContent = `❌ Face does not match ${enrolled.studentName}! Access Denied.`;
-        AppNotifications.showToast(`Access Denied: Face does not match account owner (${enrolled.studentName}).`, 'error', 4000);
+        statusMsg.textContent = `❌ Face not recognized (${matchRes.similarity || 0}%). Access Denied.`;
+        AppNotifications.showToast('Access Denied: Face does not match registered student template.', 'error', 4000);
 
         setTimeout(() => {
           this.closeFaceScannerModal();
-          const pinInput = document.getElementById('auth-pin-input');
-          if (pinInput) {
-            pinInput.focus();
-            pinInput.value = '';
+          const pwdInput = document.getElementById('auth-password-input');
+          if (pwdInput) {
+            pwdInput.focus();
+            pwdInput.value = '';
           }
         }, 1800);
       }
@@ -460,10 +507,11 @@ const App = {
     overlay.classList.remove('hidden');
     document.getElementById('auth-view-unlock').style.display = 'block';
     document.getElementById('auth-view-register').style.display = 'none';
-    const pinInput = document.getElementById('auth-pin-input');
-    if (pinInput) {
-      pinInput.value = '';
-      setTimeout(() => pinInput.focus(), 150);
+    const pwdInput = document.getElementById('auth-password-input');
+    const idInput = document.getElementById('auth-student-id-input');
+    if (pwdInput) {
+      pwdInput.value = '';
+      setTimeout(() => (idInput && !idInput.value ? idInput.focus() : pwdInput.focus()), 150);
     }
     const errEl = document.getElementById('auth-unlock-error');
     if (errEl) errEl.style.display = 'none';
@@ -476,20 +524,9 @@ const App = {
 
   updateAuthScreenProfile() {
     const settings = AppStorage.getSettings();
-    const nameEl = document.getElementById('auth-name-display');
-    const collegeEl = document.getElementById('auth-college-display');
-    const avatarEl = document.getElementById('auth-avatar-display');
-
-    if (nameEl) nameEl.textContent = settings.studentName || 'Student';
-    if (collegeEl) collegeEl.textContent = `${settings.collegeName || 'College'} • ${settings.branch || 'Branch'}`;
-    if (avatarEl) {
-      const initials = (settings.studentName || 'Student')
-        .split(' ')
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
-      avatarEl.textContent = initials || 'ST';
+    const idInput = document.getElementById('auth-student-id-input');
+    if (idInput && !idInput.value) {
+      idInput.value = settings.security?.studentId || 'CS101';
     }
   },
 
@@ -2162,34 +2199,25 @@ const App = {
             setTimeout(() => this.closeFaceScannerModal(), 1200);
           } else {
             // Unlock / Test Mode
-            const enrolled = FaceBiometrics.getEnrolledFace();
-            if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
-              if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
-              if (statusMsg) statusMsg.textContent = `No face enrolled for "${currentStudent}".`;
-              AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN first.`, 'warning');
-              return;
-            }
-
-            const similarity = FaceBiometrics.calculateSimilarity(result.descriptor, enrolled.descriptor);
-
-            if (similarity >= 85) {
+            const matchRes = FaceBiometrics.findMatchingFace(result.descriptor, this.currentFaceModalMode === 'test' ? currentStudent : null);
+            if (matchRes.match) {
               if (viewfinder) viewfinder.className = 'face-scanner-viewfinder verified';
               if (flashBadge) { flashBadge.style.display = 'flex'; flashText.textContent = '✓'; }
-              if (statusMsg) statusMsg.textContent = `Match Confirmed (${similarity}%)! Identity Verified.`;
+              if (statusMsg) statusMsg.textContent = `Match Confirmed (${matchRes.similarity}%)! Identity Verified.`;
 
               if (this.currentFaceModalMode === 'test') {
-                AppNotifications.showToast(`Face Confirmed (${similarity}% match)!`, 'success');
+                AppNotifications.showToast(`Face Confirmed for ${matchRes.studentName} (${matchRes.similarity}% match)!`, 'success');
                 setTimeout(() => this.closeFaceScannerModal(), 1200);
               } else {
-                AppStorage.unlock();
+                AppStorage.unlockWithBiometrics(matchRes.studentName, matchRes.studentId);
                 this.hideAuthOverlay();
-                AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+                AppNotifications.showToast(`Welcome back, ${matchRes.studentName}! (Biometric Verified)`, 'success');
                 setTimeout(() => this.closeFaceScannerModal(), 800);
               }
             } else {
               if (viewfinder) viewfinder.className = 'face-scanner-viewfinder failed';
-              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${similarity}%). Access Denied.`;
-              AppNotifications.showToast(`Access Denied: Face does not match ${enrolled.studentName}.`, 'error');
+              if (statusMsg) statusMsg.textContent = `❌ Face mismatch (${matchRes.similarity || 0}%). Access Denied.`;
+              AppNotifications.showToast('Access Denied: Face did not match any registered student.', 'error');
             }
           }
         } catch (err) {
@@ -2281,24 +2309,24 @@ const App = {
     }
 
     // Flow 2: Unlock / Test Mode
-    const enrolled = FaceBiometrics.getEnrolledFace();
+    const allFaces = FaceBiometrics.getAllEnrolledFaces();
 
-    // Strict Account Security: If no face is enrolled for this account, DO NOT auto-unlock!
-    if (!enrolled || (enrolled.studentName || '').toLowerCase().trim() !== currentStudent.toLowerCase()) {
+    // Strict Account Security: If no face is enrolled, notify user to use Student ID & Password
+    if (!allFaces || allFaces.length === 0) {
       viewfinder.className = 'face-scanner-viewfinder failed';
       if (scanBeam) scanBeam.style.display = 'none';
-      statusMsg.textContent = `No face enrolled for "${currentStudent}". Please use PIN to unlock.`;
-      AppNotifications.showToast(`No face enrolled for ${currentStudent}. Unlock with PIN, then enroll in Settings.`, 'warning', 4000);
+      statusMsg.textContent = 'No biometric face enrolled yet. Please log in with Student ID & Password first.';
+      AppNotifications.showToast('No face enrolled yet. Sign in with Student ID & Password, then enroll in Settings.', 'info', 4000);
       
       setTimeout(() => {
         this.closeFaceScannerModal();
-        const pinInput = document.getElementById('auth-pin-input');
-        if (pinInput) pinInput.focus();
+        const idInput = document.getElementById('auth-student-id-input');
+        if (idInput) idInput.focus();
       }, 2000);
       return;
     }
 
-    // Strict Biometric Scan Loop: Only the genuine account holder's face will match
+    // Strict Biometric Scan Loop: Only genuine account holder's face will match (>= 85%)
     let scanAttempts = 0;
     const MAX_SCAN_ATTEMPTS = 20; // ~8 seconds max
     FaceBiometrics.isScanning = true;
@@ -2309,12 +2337,12 @@ const App = {
 
       FaceBiometrics.captureSnapshot(videoEl, canvasEl, 200);
       const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
-      const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
+      const matchRes = FaceBiometrics.findMatchingFace(currentDesc, mode === 'test' ? currentStudent : null);
 
-      statusMsg.textContent = `Matching: ${similarity}% confidence (85% required)...`;
+      statusMsg.textContent = `Matching: ${matchRes.similarity || 0}% confidence (85% required)...`;
 
       // STRICT THRESHOLD: Must achieve >= 85% biometric match
-      if (similarity >= 85) {
+      if (matchRes.match) {
         FaceBiometrics.isScanning = false;
         clearInterval(FaceBiometrics.scanTimer);
 
@@ -2325,17 +2353,17 @@ const App = {
           flashText.textContent = '✓';
         }
 
-        statusMsg.textContent = `Identity Verified: ${enrolled.studentName} (${similarity}% Match)!`;
+        statusMsg.textContent = `Identity Verified: ${matchRes.studentName} (${matchRes.similarity}% Match)!`;
 
         if (mode === 'test') {
-          AppNotifications.showToast(`Face match confirmed for ${enrolled.studentName} (${similarity}%)!`, 'success');
+          AppNotifications.showToast(`Face match confirmed for ${matchRes.studentName} (${matchRes.similarity}%)!`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 1200);
         } else {
-          AppStorage.unlock();
+          AppStorage.unlockWithBiometrics(matchRes.studentName, matchRes.studentId);
           this.hideAuthOverlay();
-          AppNotifications.showToast(`Welcome back, ${enrolled.studentName}! (Face Verified)`, 'success');
+          AppNotifications.showToast(`Welcome back, ${matchRes.studentName}! (Biometric Verified)`, 'success');
           setTimeout(() => {
             this.closeFaceScannerModal();
           }, 800);
@@ -2347,15 +2375,15 @@ const App = {
 
         viewfinder.className = 'face-scanner-viewfinder failed';
         if (scanBeam) scanBeam.style.display = 'none';
-        statusMsg.textContent = `❌ Face does not match ${enrolled.studentName}! Access Denied.`;
-        AppNotifications.showToast(`Access Denied: Face does not match account owner (${enrolled.studentName}).`, 'error', 4000);
+        statusMsg.textContent = `❌ Face not recognized (${matchRes.similarity || 0}%). Access Denied.`;
+        AppNotifications.showToast('Access Denied: Face does not match registered student template.', 'error', 4000);
 
         setTimeout(() => {
           this.closeFaceScannerModal();
-          const pinInput = document.getElementById('auth-pin-input');
-          if (pinInput) {
-            pinInput.focus();
-            pinInput.value = '';
+          const pwdInput = document.getElementById('auth-password-input');
+          if (pwdInput) {
+            pwdInput.focus();
+            pwdInput.value = '';
           }
         }, 1800);
       }
@@ -2380,6 +2408,7 @@ const App = {
     };
 
     setInput('setting-student-name', settings.studentName);
+    setInput('setting-student-id', settings.security?.studentId || 'CS101');
     setInput('setting-college-name', settings.collegeName);
     setInput('setting-branch', settings.branch);
     setInput('setting-academic-year', settings.academicYear);
@@ -2497,6 +2526,7 @@ const App = {
     };
 
     const studentName = getVal('setting-student-name', current.studentName).trim();
+    const studentId = getVal('setting-student-id', current.security?.studentId || 'CS101').trim();
     const collegeName = getVal('setting-college-name', current.collegeName).trim();
     const branch = getVal('setting-branch', current.branch).trim();
     const academicYear = getVal('setting-academic-year', current.academicYear).trim();
@@ -2539,7 +2569,11 @@ const App = {
       remindersEnabled,
       dailyReminderTime,
       eveningReminderTime,
-      timetable
+      timetable,
+      security: {
+        ...(current.security || {}),
+        studentId
+      }
     };
 
     AppStorage.saveSettings(newSettings);
