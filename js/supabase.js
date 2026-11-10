@@ -98,8 +98,19 @@ const SupabaseSync = {
    * Derive safe, unique student identifier (e.g. 'alex_morgan' or custom ID)
    */
   getStudentId(studentName) {
-    const name = studentName || (typeof AppStorage !== 'undefined' ? AppStorage.getSettings().studentName : 'Alex Morgan');
-    return name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    if (studentName) {
+      return studentName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    }
+    if (typeof AppStorage !== 'undefined') {
+      const settings = AppStorage.getSettings();
+      if (settings.security?.studentId) {
+        return settings.security.studentId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      }
+      if (settings.studentName) {
+        return settings.studentName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      }
+    }
+    return 'cs101';
   },
 
   /**
@@ -197,7 +208,7 @@ const SupabaseSync = {
 
     const settings = typeof AppStorage !== 'undefined' ? AppStorage.getSettings() : {};
     const studentName = customProfile?.name || settings.studentName || 'Alex Morgan';
-    const studentId = this.getStudentId(studentName);
+    const studentId = customProfile?.studentId ? this.getStudentId(customProfile.studentId) : this.getStudentId();
 
     // Retrieve biometric enrollment if available
     let faceData = null;
