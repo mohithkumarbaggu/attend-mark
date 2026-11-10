@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#8B5CF6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>My Attendance Tracker - Personal College Attendance Management</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.svg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B5CF6' stroke-width='2'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>">
+</head>
+<body>
+
+  <!-- AUTH / LOGIN OVERLAY SCREEN (LOCK FIRST) -->
+  <div id="app-auth-screen" class="auth-screen-overlay">
+    <div class="auth-card">
+      
+      <!-- 1. UNLOCK EXISTING ACCOUNT VIEW -->
+      <div id="auth-view-unlock">
+        <div class="auth-header">
+          <div class="brand-logo-icon" style="margin: 0 auto 12px auto; width: 44px; height: 44px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h2 style="font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em;">AttendMark</h2>
+          <p style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Personal Student Tracker</p>
+        </div>
+
+        <div class="auth-user-badge">
+          <div class="auth-user-avatar" id="auth-avatar-display">AM</div>
+          <div style="text-align: center;">
+            <h3 style="font-size: 1.15rem; font-weight: 700;" id="auth-name-display">Alex Morgan</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);" id="auth-college-display">National Institute of Technology</p>
+          </div>
+        </div>
+
+        <form id="auth-unlock-form">
+          <div class="form-group" style="text-align: center;">
+            <label class="form-label" for="auth-pin-input" style="font-size: 0.82rem;">Enter Security PIN</label>
+            <input type="password" id="auth-pin-input" class="form-input" maxlength="6" inputmode="numeric" placeholder="••••" required autofocus style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; font-weight: 700; height: 48px;">
+            <span style="font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; display: block;">Default PIN: <b style="color: var(--accent-purple);">1234</b></span>
+          </div>
+
+          <div id="auth-unlock-error" style="display: none; color: var(--color-absent); font-size: 0.82rem; text-align: center; margin-bottom: 12px; font-weight: 600;"></div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 0.92rem; margin-top: 4px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Unlock My Tracker</span>
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 18px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-show-register-view" style="font-size: 0.8rem;">
+            New Student? Create Account
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. REGISTER / CREATE ACCOUNT VIEW -->
+      <div id="auth-view-register" style="display: none;">
+        <div class="auth-header">
+          <h2 style="font-size: 1.22rem; font-weight: 800;">Create Personal Account</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Set up your independent student profile</p>
+        </div>
+
+        <form id="auth-register-form">
+          <div class="form-group">
+            <label class="form-label" for="reg-name">Student Full Name</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="e.g. Alex Morgan" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-college">College / University Name</label>
+            <input type="text" id="reg-college" class="form-input" placeholder="e.g. National Institute of Technology" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="reg-branch">Branch / Dept</label>
+              <input type="text" id="reg-branch" class="form-input" placeholder="e.g. CSE" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reg-semester">Semester</label>
+              <input type="text" id="reg-semester" class="form-input" placeholder="e.g. Sem 5" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="reg-target">Target Goal %</label>
+              <input type="number" id="reg-target" class="form-input" min="1" max="99" value="75" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reg-pin">Set 4-Digit PIN</label>
+              <input type="password" id="reg-pin" class="form-input" maxlength="6" inputmode="numeric" placeholder="1234" value="1234" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; margin-top: 8px;">
+            <span>Create Account & Unlock</span>
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 14px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-back-to-unlock" style="font-size: 0.8rem;">
+            &larr; Back to Existing Account
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="app-container">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-name">AttendMark</h1>
+          <span class="brand-tagline">Personal Tracker</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="nav-menu" aria-label="Main Navigation">
+        <a href="#dashboard" class="nav-item active" data-view="dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#mark" class="nav-item" data-view="mark">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Mark Attendance</span>
+        </a>
+        <a href="#calendar" class="nav-item" data-view="calendar">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Calendar</span>
+        </a>
+        <a href="#history" class="nav-item" data-view="history">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>History</span>
+        </a>
+        <a href="#analytics" class="nav-item" data-view="analytics">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Analytics</span>
+        </a>
+        <a href="#calculator" class="nav-item" data-view="calculator">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <span>Target Calculator</span>
+        </a>
+        <a href="#settings" class="nav-item" data-view="settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile-summary">
+          <div class="user-avatar" id="sidebar-user-avatar">AM</div>
+          <div class="user-info">
+            <span class="user-name" id="sidebar-user-name">Alex Morgan</span>
+            <span class="user-branch" id="sidebar-user-branch">CSE • Sem 5</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="theme-toggle-btn" title="Toggle Theme" style="flex: 1; padding: 6px 8px;">
+            <span id="theme-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+            <span style="font-size: 0.75rem;">Theme</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="header-lock-btn" title="Lock Account" style="flex: 1; padding: 6px 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span style="font-size: 0.75rem;">Lock</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+
+      <!-- TOP HEADER -->
+      <header class="top-header" id="main-top-header">
+        <div class="header-left">
+          <!-- Top Greeting with Large Bold Name on Dashboard -->
+          <div class="header-greeting-container" id="header-greeting-container">
+            <span class="header-greeting-salutation" id="header-greeting-salutation">Good morning,</span>
+            <h1 class="header-greeting-name" id="header-greeting-name">Alex Morgan</h1>
+          </div>
+          <!-- Standard Page Title on other views -->
+          <h2 class="page-title" id="header-page-title" style="display: none;">Dashboard</h2>
+        </div>
+
+        <div class="header-right">
+          <button type="button" class="header-avatar-btn" id="header-avatar-btn" title="View Profile & Settings" onclick="App.switchView('settings')">
+            <span class="header-avatar-initials" id="header-user-avatar">AM</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- PRINT HEADER -->
+      <div class="print-only-header" id="print-report-header">
+        <!-- Injected dynamically on print -->
+      </div>
+
+      <!-- MAIN CONTENT BODY -->
+      <main class="content-body">
+
+        <!-- ATTENDANCE WARNING BANNER (Shows when current % < target %) -->
+        <div class="warning-banner" id="attendance-warning-banner" style="display: none;">
+          <svg class="warning-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="warning-message" style="flex: 1;">Warning: Your attendance has dropped below target.</span>
+          <button type="button" class="warning-btn" id="warning-recover-btn">Calculate Recovery</button>
+        </div>
+
+        <!-- =================================================================
+             VIEW 1: DASHBOARD
+             ================================================================= -->
+        <section id="view-dashboard" class="view-section">
+          <!-- Hero Section -->
+          <div class="dashboard-hero-grid">
+            <!-- Left Hero: Circular Gauge Card -->
+            <div class="card hero-attendance-card">
+              <div class="circular-progress-wrapper">
+                <svg class="circular-progress-svg" viewBox="0 0 160 160">
+                  <circle class="progress-bg-circle" cx="80" cy="80" r="70"></circle>
+                  <circle class="progress-bar-circle" id="hero-circle-progress-bar" cx="80" cy="80" r="70"></circle>
+                </svg>
+                <div class="circle-inner-content">
+                  <span class="circle-percentage-val" id="hero-circle-val">0.0%</span>
+                  <span class="circle-percentage-label">Current</span>
+                </div>
+              </div>
+
+              <div class="hero-stats-details">
+                <div class="hero-badge-row">
+                  <span class="badge" id="hero-circle-status-badge">Calculating...</span>
+                  <span class="badge badge-purple" id="hero-target-badge">Target: 75%</span>
+                  <span class="badge badge-purple" id="hero-streak-badge" style="display: none;">🔥 Streak</span>
+                </div>
+                <h3 class="hero-headline" id="hero-headline-text">Attendance On Track</h3>
+                <p class="hero-subheadline" id="hero-subheadline-text">Calculating your safe absence allowance and period projections.</p>
+
+                <!-- Progress Bar Towards Target -->
+                <div style="margin-top: 6px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>Progress</span>
+                    <span>Target Marker (75%)</span>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="hero-progress-bar-fill" style="width: 85%;"></div>
+                    <div class="target-indicator-marker" id="hero-target-marker" style="left: 75%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Hero: Quick Action & Greeting Card -->
+            <div class="card hero-action-card">
+              <div>
+                <div class="card-header" style="margin-bottom: 8px;">
+                  <div>
+                    <h3 class="card-title" id="dashboard-greeting-title">Hello, Student!</h3>
+                    <p class="card-subtitle" id="dashboard-greeting-sub">National Institute of Technology</p>
+                  </div>
+                  <span id="hero-today-status" class="badge">Today</span>
+                </div>
+                <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 8px;">
+                  Keep your attendance above target to remain eligible for university semester examinations.
+                </p>
+              </div>
+
+              <div class="quick-action-btns">
+                <button type="button" class="btn btn-primary" onclick="App.switchView('mark')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span>Mark Today's Periods</span>
+                </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="App.switchView('calendar')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Calendar</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="App.switchView('analytics')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span>Analytics</span>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="App.switchView('calculator')">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                  <span>Target & Bunk Calculator</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Method B Card (Shown if enabled in Settings) -->
+          <div class="card method-b-card" id="dashboard-method-b-card" style="display: none;">
+            <div class="card-header" style="margin-bottom: 8px;">
+              <h4 class="card-title" style="color: var(--accent-purple);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Method B: Custom Daily Percentage Adjustment Tracker
+              </h4>
+              <span class="badge badge-purple">Custom Tracking Rule</span>
+            </div>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 14px;">
+              Tracks college adjustment estimate (+0.5% per full attendance day, -3.0% per full absence day). Kept strictly separate from standard period formula.
+            </p>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Adjusted Attendance</span>
+                <span style="font-size: 1.4rem; font-weight: 800; color: var(--accent-purple);" id="method-b-percentage-val">75.0%</span>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Base Starting %</span>
+                <span style="font-size: 1.1rem; font-weight: 700;" id="method-b-base-val">75.0%</span>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Full Day Bonus</span>
+                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-present);" id="method-b-bonus-val">+0.0%</span>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Full Absence Penalty</span>
+                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-absent);" id="method-b-penalty-val">-0.0%</span>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Net Adjustment</span>
+                <span style="font-size: 1.1rem; font-weight: 700;" id="method-b-net-val">0.0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 8 Key Metrics Grid -->
+          <div class="stats-metrics-grid">
+            <!-- 1. Conducted Periods -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon purple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-total-conducted">0</span>
+              <span class="stat-metric-label">Conducted Periods</span>
+              <span class="stat-metric-sub">Total classes held</span>
+            </div>
+
+            <!-- 2. Attended Periods -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon green">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-total-attended">0</span>
+              <span class="stat-metric-label">Attended Periods</span>
+              <span class="stat-metric-sub">Present in class</span>
+            </div>
+
+            <!-- 3. Missed Periods -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-total-missed">0</span>
+              <span class="stat-metric-label">Missed Periods</span>
+              <span class="stat-metric-sub">Absences recorded</span>
+            </div>
+
+            <!-- 4. Current Month % -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-month-percentage">0.0%</span>
+              <span class="stat-metric-label">Monthly Attendance</span>
+              <span class="stat-metric-sub">This calendar month</span>
+            </div>
+
+            <!-- 5. Total Working Days -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon purple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-working-days">0</span>
+              <span class="stat-metric-label">Total Working Days</span>
+              <span class="stat-metric-sub">Days with classes</span>
+            </div>
+
+            <!-- 6. Total Present Days -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon green">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-present-days">0</span>
+              <span class="stat-metric-label">Present Days</span>
+              <span class="stat-metric-sub">Attended classes</span>
+            </div>
+
+            <!-- 7. Total Absent Days -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-absent-days">0</span>
+              <span class="stat-metric-label">Entire-Day Absences</span>
+              <span class="stat-metric-sub">Zero periods attended</span>
+            </div>
+
+            <!-- 8. Target Attendance -->
+            <div class="stat-metric-card">
+              <div class="stat-metric-icon blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <span class="stat-metric-val" id="stat-target-percentage">75%</span>
+              <span class="stat-metric-label">Target Goal</span>
+              <span class="stat-metric-sub">College requirement</span>
+            </div>
+          </div>
+
+          <!-- Recent Attendance Activity Card -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Recent Activity</h3>
+                <p class="card-subtitle">Last 5 attendance entries recorded</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="App.switchView('history')">View Full History</button>
+            </div>
+            <div id="dashboard-recent-activity-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 2: DAILY PERIOD-WISE ATTENDANCE MARKING
+             ================================================================= -->
+        <section id="view-mark" class="view-section" style="display: none;">
+          <div class="marking-controls-bar">
+            <!-- Date Navigator -->
+            <div class="date-navigation-group">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-prev-day" title="Previous day">&larr; Prev</button>
+              <input type="date" class="date-input-field" id="marking-date-picker">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-next-day" title="Next day">Next &rarr;</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-jump-today">Today</button>
+            </div>
+
+            <!-- Quick Batch Mark Actions -->
+            <div class="marking-quick-actions">
+              <button type="button" class="btn btn-success btn-sm" id="btn-mark-all-present">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Mark All Present
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" id="btn-mark-all-absent">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Mark All Absent
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-day-attendance">Clear Day</button>
+            </div>
+          </div>
+
+          <!-- Day Status & Holiday Toggle -->
+          <div class="day-status-card">
+            <div>
+              <h3 style="font-weight: 700; font-size: 1.05rem;" id="marking-day-display">Monday, November 10, 2026</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Configure period attendance below</p>
+            </div>
+            <div class="toggle-switch-wrapper">
+              <span style="font-size: 0.88rem; font-weight: 600;">Holiday / No Classes</span>
+              <label class="switch">
+                <input type="checkbox" id="holiday-toggle-checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Holiday Reason (Conditional) -->
+          <div id="holiday-reason-input-group" style="display: none; margin-bottom: 20px;">
+            <input type="text" class="day-note-input" id="holiday-reason-input" placeholder="Holiday reason (e.g. Festival, Tech Fest, Semester Break)" style="width: 100%;">
+          </div>
+
+          <!-- Periods List Container -->
+          <div class="periods-container" id="periods-list-container">
+            <!-- Period rows injected via JS -->
+          </div>
+
+          <!-- Notes & Save Action Bar -->
+          <div class="card" style="margin-top: 16px;">
+            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span style="font-size: 0.88rem; font-weight: 600;">Day Notes (Optional)</span>
+            </div>
+            <input type="text" class="day-note-input" id="day-note-input" placeholder="e.g. Lab assignment submission, mentor meeting, sick leave">
+
+            <div class="marking-bottom-bar">
+              <span class="day-summary-pill" id="marking-summary-pill">Calculating...</span>
+              <button type="button" class="btn btn-primary" id="btn-save-attendance">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save Attendance</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 3: ATTENDANCE CALENDAR
+             ================================================================= -->
+        <section id="view-calendar" class="view-section" style="display: none;">
+          <div class="card">
+            <!-- Calendar Navigation Header -->
+            <div class="calendar-header-bar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-calendar-prev-month">&larr; Prev</button>
+                <h3 style="font-size: 1.25rem; font-weight: 700;" id="calendar-month-year-label">November 2026</h3>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-calendar-next-month">Next &rarr;</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-calendar-today">Current Month</button>
+              </div>
+
+              <!-- Calendar Color Legend -->
+              <div class="calendar-legend">
+                <div class="legend-item"><span class="legend-dot green"></span> Full Present</div>
+                <div class="legend-item"><span class="legend-dot yellow"></span> Partial</div>
+                <div class="legend-item"><span class="legend-dot red"></span> Full Absent</div>
+                <div class="legend-item"><span class="legend-dot grey"></span> Holiday</div>
+                <div class="legend-item"><span class="legend-dot blue"></span> Today</div>
+              </div>
+            </div>
+
+            <!-- Month Summary Bar -->
+            <div style="padding: 10px 14px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.84rem; font-weight: 600; color: var(--text-secondary);" id="calendar-month-stats-bar">
+              Month Summary: Calculating...
+            </div>
+
+            <!-- Calendar Days Grid -->
+            <div class="calendar-grid" id="calendar-days-grid">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 4: ATTENDANCE HISTORY
+             ================================================================= -->
+        <section id="view-history" class="view-section" style="display: none;">
+          <div class="card">
+            <!-- Filter Bar -->
+            <div class="history-filters-bar">
+              <div class="filter-chips">
+                <button type="button" class="chip-btn active" data-filter="all">All Records</button>
+                <button type="button" class="chip-btn" data-filter="week">This Week</button>
+                <button type="button" class="chip-btn" data-filter="month">This Month</button>
+                <button type="button" class="chip-btn" data-filter="prev-month">Previous Month</button>
+              </div>
+
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" class="search-input" id="history-search-input" placeholder="Search date, subject, note...">
+                <select class="form-select" id="history-sort-select" style="padding: 8px 12px; font-size: 0.85rem;">
+                  <option value="date-desc">Date (Newest First)</option>
+                  <option value="date-asc">Date (Oldest First)</option>
+                  <option value="pct-desc">Attendance % (High to Low)</option>
+                  <option value="pct-asc">Attendance % (Low to High)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="history-table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Conducted</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Attendance %</th>
+                    <th>Note / Holiday</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-tbody">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+              <div id="history-empty-state" style="display: none; padding: 40px; text-align: center; color: var(--text-muted);">
+                No attendance records found matching your filters.
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 5: REPORTS & ANALYTICS
+             ================================================================= -->
+        <section id="view-analytics" class="view-section" style="display: none;">
+          <!-- Top Action Bar -->
+          <div style="display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 20px;">
+            <button type="button" class="btn btn-secondary" id="btn-export-csv">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Export CSV</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-print-report">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <span>Download / Print PDF</span>
+            </button>
+          </div>
+
+          <div class="analytics-grid">
+            <!-- Chart 1: Progress Trend Curve (Full Width) -->
+            <div class="card chart-card-full">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Cumulative Attendance Progress Over Time</h3>
+                  <p class="card-subtitle">Smooth percentage trend compared to target requirement</p>
+                </div>
+                <span class="badge badge-purple">Standard Method A</span>
+              </div>
+              <canvas class="chart-canvas" id="chart-attendance-progress"></canvas>
+            </div>
+
+            <!-- Chart 2: Weekly Trends -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Weekly Attendance Trends</h3>
+                  <p class="card-subtitle">Present vs Absent periods across recent days</p>
+                </div>
+              </div>
+              <canvas class="chart-canvas" id="chart-weekly-trends"></canvas>
+            </div>
+
+            <!-- Chart 3: Donut Chart -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Overall Periods Breakdown</h3>
+                  <p class="card-subtitle">Total attended vs missed periods distribution</p>
+                </div>
+              </div>
+              <canvas class="chart-canvas" id="chart-present-vs-absent"></canvas>
+            </div>
+
+            <!-- Chart 4: Monthly Comparison -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Monthly Attendance Comparison</h3>
+                  <p class="card-subtitle">Month-by-month percentage achievement</p>
+                </div>
+              </div>
+              <canvas class="chart-canvas" id="chart-monthly-trends"></canvas>
+            </div>
+
+            <!-- Chart 5: Day of Week Breakdown -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Day-of-Week Attendance Patterns</h3>
+                  <p class="card-subtitle">Average attendance rate by weekday</p>
+                </div>
+              </div>
+              <canvas class="chart-canvas" id="chart-day-of-week"></canvas>
+            </div>
+
+            <!-- Subject-wise Attendance Breakdown -->
+            <div class="card chart-card-full">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    Subject-wise Attendance Breakdown
+                  </h3>
+                  <p class="card-subtitle">Individual course tracking against college target</p>
+                </div>
+              </div>
+              <div id="analytics-subjects-breakdown-list">
+                <!-- Rendered dynamically via JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 6: TARGET CALCULATOR
+             ================================================================= -->
+        <section id="view-calculator" class="view-section" style="display: none;">
+          <div class="calculator-hero">
+            <h3 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;">Target & Bunk Calculator</h3>
+            <p style="font-size: 0.92rem; color: var(--text-secondary); max-width: 600px; margin: 8px auto 0 auto;">
+              Dynamically calculate exact consecutive periods you need to attend or safe periods you can miss without falling below your attendance threshold.
+            </p>
+
+            <!-- Target Selection Chips -->
+            <div class="target-chips-container">
+              <button type="button" class="target-chip active" data-target="75">75% Target</button>
+              <button type="button" class="target-chip" data-target="80">80% Target</button>
+              <button type="button" class="target-chip" data-target="85">85% Target</button>
+              <button type="button" class="target-chip" data-target="90">90% Target</button>
+              <div style="display: inline-flex; align-items: center; gap: 6px; margin-left: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Custom:</span>
+                <input type="number" id="custom-target-input" class="form-input" min="1" max="99" value="75" style="width: 80px; padding: 6px 10px; font-weight: 700; text-align: center;">
+                <span style="font-weight: 700;">%</span>
+              </div>
+            </div>
+
+            <!-- Outcome Box -->
+            <div class="target-outcome-box">
+              <div style="display: flex; justify-content: center; gap: 32px; margin-bottom: 12px; font-size: 0.95rem;">
+                <span>Current: <b id="calc-current-pct" style="color: var(--accent-purple);">0.0%</b></span>
+                <span>Target: <b id="calc-target-pct">75%</b></span>
+              </div>
+              <div class="outcome-number-huge safe" id="calc-huge-number">0</div>
+              <div style="font-weight: 700; font-size: 1.15rem; color: var(--text-primary);" id="calc-huge-label">Safe Cushion</div>
+              <p style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 14px; max-width: 620px; margin-left: auto; margin-right: auto; line-height: 1.5;" id="calc-explanation-text">
+                Calculating required period metrics...
+              </p>
+            </div>
+          </div>
+
+          <!-- Interactive What-If Simulation Sliders -->
+          <div class="analytics-grid">
+            <!-- Simulate Attending Next N Periods -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4 class="card-title" style="color: var(--color-present);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    What if I attend next N periods?
+                  </h4>
+                  <p class="card-subtitle">Projected percentage boost</p>
+                </div>
+              </div>
+              <div class="slider-container">
+                <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px;">
+                  <span>Periods to Attend: <b id="slider-attend-count-label">6</b></span>
+                </div>
+                <input type="range" class="slider-range" id="slider-simulate-attend" min="1" max="36" value="6">
+              </div>
+              <div style="padding: 14px; background: var(--bg-tertiary); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; font-weight: 600;">Estimated New Attendance:</span>
+                <span id="sim-attend-result" style="font-size: 1.15rem; font-weight: 700;">--</span>
+              </div>
+            </div>
+
+            <!-- Simulate Missing Next M Periods -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4 class="card-title" style="color: var(--color-absent);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    What if I miss next M periods?
+                  </h4>
+                  <p class="card-subtitle">Projected percentage drop</p>
+                </div>
+              </div>
+              <div class="slider-container">
+                <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px;">
+                  <span>Periods Missed: <b id="slider-miss-count-label">6</b></span>
+                </div>
+                <input type="range" class="slider-range" id="slider-simulate-miss" min="1" max="36" value="6">
+              </div>
+              <div style="padding: 14px; background: var(--bg-tertiary); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; font-weight: 600;">Estimated New Attendance:</span>
+                <span id="sim-miss-result" style="font-size: 1.15rem; font-weight: 700;">--</span>
+              </div>
+            </div>
+          </div>
+          <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 16px;">
+            Note: All calculations use standard period-based formula (Attended / Conducted × 100) and assume upcoming periods are attended unless simulated.
+          </div>
+        </section>
+
+
+        <!-- =================================================================
+             VIEW 7: SETTINGS & TIMETABLE
+             ================================================================= -->
+        <section id="view-settings" class="view-section" style="display: none;">
+          <form id="settings-form">
+            <div class="settings-grid">
+
+              <!-- Student Profile Card -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Student Profile</h3>
+                    <p class="card-subtitle">Academic details for personal tracking & reports</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="setting-student-name">Student Name</label>
+                  <input type="text" class="form-input" id="setting-student-name" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="setting-college-name">College Name</label>
+                  <input type="text" class="form-input" id="setting-college-name" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="setting-branch">Branch / Department</label>
+                  <input type="text" class="form-input" id="setting-branch" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div class="form-group">
+                    <label class="form-label" for="setting-academic-year">Academic Year</label>
+                    <input type="text" class="form-input" id="setting-academic-year" placeholder="e.g. 2026-2027">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="setting-semester">Semester</label>
+                    <input type="text" class="form-input" id="setting-semester" placeholder="e.g. Semester 5">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Attendance Engine Parameters -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Attendance Parameters</h3>
+                    <p class="card-subtitle">Configure periods per day and target goal</p>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div class="form-group">
+                    <label class="form-label" for="setting-periods-per-day">Periods Per Day</label>
+                    <input type="number" class="form-input" id="setting-periods-per-day" min="1" max="12" value="6" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="setting-target-percentage">Target Attendance %</label>
+                    <input type="number" class="form-input" id="setting-target-percentage" min="1" max="99" value="75" required>
+                  </div>
+                </div>
+
+                <!-- Baseline Initial Period Counts -->
+                <div style="padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-top: 6px; margin-bottom: 14px;">
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-purple); display: block; margin-bottom: 6px;">
+                    Starting Baseline Records (Optional)
+                  </span>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                      <label class="form-label" style="font-size: 0.75rem;" for="setting-initial-conducted">Initial Conducted</label>
+                      <input type="number" class="form-input" id="setting-initial-conducted" min="0" value="0">
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size: 0.75rem;" for="setting-initial-attended">Initial Attended</label>
+                      <input type="number" class="form-input" id="setting-initial-attended" min="0" value="0">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Method B Toggle -->
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div>
+                      <span style="font-weight: 600; font-size: 0.9rem;">Enable Method B (Daily Adjustments)</span>
+                      <p style="font-size: 0.75rem; color: var(--text-muted);">+0.5% full day, -3.0% full absence</p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="setting-enable-method-b">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-group" style="margin-top: 8px;">
+                    <label class="form-label" for="setting-method-b-start">Method B Starting Percentage (%)</label>
+                    <input type="number" step="0.1" class="form-input" id="setting-method-b-start" min="0" max="100" value="75.0">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Weekly Timetable Editor -->
+              <div class="card chart-card-full">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Weekly Timetable</h3>
+                    <p class="card-subtitle">Assign default subject names to each period for fast marking</p>
+                  </div>
+                </div>
+
+                <div class="timetable-days-tabs">
+                  <button type="button" class="chip-btn active" data-day="Monday">Monday</button>
+                  <button type="button" class="chip-btn" data-day="Tuesday">Tuesday</button>
+                  <button type="button" class="chip-btn" data-day="Wednesday">Wednesday</button>
+                  <button type="button" class="chip-btn" data-day="Thursday">Thursday</button>
+                  <button type="button" class="chip-btn" data-day="Friday">Friday</button>
+                  <button type="button" class="chip-btn" data-day="Saturday">Saturday</button>
+                </div>
+
+                <div id="timetable-subjects-editor">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- Reminders & Notifications -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Reminders & Notifications</h3>
+                    <p class="card-subtitle">Daily reminders to record your periods</p>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.9rem;">Enable Reminders</span>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">In-app & browser notification alerts</p>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="setting-enable-reminders" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                  <div class="form-group">
+                    <label class="form-label" for="setting-daily-reminder-time">Daily Afternoon Reminder</label>
+                    <input type="time" class="form-input" id="setting-daily-reminder-time" value="16:00">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="setting-evening-reminder-time">Evening Review Reminder</label>
+                    <input type="time" class="form-input" id="setting-evening-reminder-time" value="20:00">
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-request-browser-notifications" style="width: 100%;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span>Enable Browser Notifications</span>
+                </button>
+              </div>
+
+              <!-- Appearance & Theme -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Appearance</h3>
+                    <p class="card-subtitle">Personalize theme and visual comfort</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="setting-theme">Theme Mode</label>
+                  <select class="form-select" id="setting-theme">
+                    <option value="light">Light Mode (Clean Apple Aesthetic)</option>
+                    <option value="dark">Dark Mode (Sleek Linear Aesthetic)</option>
+                    <option value="system">Follow System Appearance</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-top: 10px;">
+                  <div style="width: 24px; height: 24px; border-radius: 6px; background: #8B5CF6;"></div>
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.88rem;">Purple Primary Accent (#8B5CF6)</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Handcrafted Apple & Linear design system</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account & Security Card -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Account Security & PIN</h3>
+                    <p class="card-subtitle">Manage personal access PIN</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="setting-new-pin-input">Update Security PIN</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="password" class="form-input" id="setting-new-pin-input" maxlength="6" inputmode="numeric" placeholder="New 4-digit PIN" style="flex: 1;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-update-pin-action">Save PIN</button>
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.88rem;">Lock Session Now</span>
+                    <p style="font-size: 0.74rem; color: var(--text-muted);">Requires PIN to unlock</p>
+                  </div>
+                  <button type="button" class="btn btn-outline-danger btn-sm" id="btn-lock-account-settings">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Lock Now</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Data Management & Test Suite (Full Width) -->
+              <div class="card chart-card-full">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Data Storage & Backup</h3>
+                    <p class="card-subtitle">Local storage persistence, backup, and automated testing</p>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                  <button type="button" class="btn btn-secondary" id="btn-seed-demo-data">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <span>Load 35-Day Realistic Demo Data</span>
+                  </button>
+
+                  <button type="button" class="btn btn-primary" id="btn-run-scenario-tests">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Verify All 7 Scenarios (Automated Test)</span>
+                  </button>
+
+                  <button type="button" class="btn btn-secondary" id="btn-export-json">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Backup Data (JSON)</span>
+                  </button>
+
+                  <label class="btn btn-secondary" style="cursor: pointer; margin: 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Restore Data (JSON)</span>
+                    <input type="file" id="json-import-file-input" accept=".json" style="display: none;">
+                  </label>
+
+                  <button type="button" class="btn btn-outline-danger" id="btn-clear-all-data">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span>Wipe All Data</span>
+                  </button>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+                  <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
+                    <span>Save All Settings</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </form>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION DOCK (4 ESSENTIAL TABS) -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+      <a href="#dashboard" class="bottom-nav-item active" data-view="dashboard">
+        <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="#mark" class="bottom-nav-item" data-view="mark">
+        <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Mark</span>
+      </a>
+      <a href="#history" class="bottom-nav-item" data-view="history">
+        <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>History</span>
+      </a>
+      <a href="#settings" class="bottom-nav-item" data-view="settings">
+        <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <!-- CALENDAR DAY DETAIL MODAL -->
+  <div class="modal-overlay" id="calendar-day-modal">
+    <div class="modal-content">
+      <div class="card-header" style="margin-bottom: 14px;">
+        <h3 class="card-title" id="calendar-modal-date-title">Day Attendance Details</h3>
+        <button type="button" class="modal-close" data-close-modal style="font-size: 1.4rem; color: var(--text-muted);">&times;</button>
+      </div>
+      <div id="calendar-modal-content-body">
+        <!-- Rendered via JS -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="calendar-modal-edit-btn">Edit This Day</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEST SUITE MODAL (Verify 7 Scenarios) -->
+  <div class="modal-overlay" id="test-suite-modal">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="card-header" style="margin-bottom: 14px;">
+        <div>
+          <h3 class="card-title">Prompt Verification: All 7 Scenarios</h3>
+          <p class="card-subtitle">Automated unit test execution of attendance calculation engine</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal style="font-size: 1.4rem; color: var(--text-muted);">&times;</button>
+      </div>
+      <div id="test-suite-results-container">
+        <!-- Injected via JS -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/calculator.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.log('PWA ServiceWorker registration:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+
