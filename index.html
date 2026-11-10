@@ -296,6 +296,10 @@
                   <span class="badge" id="hero-circle-status-badge">Calculating...</span>
                   <span class="badge badge-purple" id="hero-target-badge">Target: 75%</span>
                   <span class="badge badge-purple" id="hero-streak-badge" style="display: none;">🔥 Streak</span>
+                  <button type="button" class="btn-update-percentage-pill" id="btn-open-update-percentage" title="Change or Update Attendance Percentage">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    <span>Update %</span>
+                  </button>
                 </div>
                 <h3 class="hero-headline" id="hero-headline-text">Attendance On Track</h3>
                 <p class="hero-subheadline" id="hero-subheadline-text">Calculating your safe absence allowance and period projections.</p>
@@ -333,6 +337,10 @@
                 <button type="button" class="btn btn-primary" onclick="App.switchView('mark')">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   <span>Mark Today's Periods</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-quick-update-percentage" style="border-color: rgba(139, 92, 246, 0.4); color: var(--accent-purple); font-weight: 700;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span>Update Attendance %</span>
                 </button>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                   <button type="button" class="btn btn-secondary btn-sm" onclick="App.switchView('calendar')">
@@ -764,8 +772,12 @@
 
             <!-- Outcome Box -->
             <div class="target-outcome-box">
-              <div style="display: flex; justify-content: center; gap: 32px; margin-bottom: 12px; font-size: 0.95rem;">
+              <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 12px; font-size: 0.95rem; flex-wrap: wrap;">
                 <span>Current: <b id="calc-current-pct" style="color: var(--accent-purple);">0.0%</b></span>
+                <button type="button" class="btn-update-percentage-pill" id="btn-calc-update-pct" title="Change or Update Attendance Percentage">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span>Update %</span>
+                </button>
                 <span>Target: <b id="calc-target-pct">75%</b></span>
               </div>
               <div class="outcome-number-huge safe" id="calc-huge-number">0</div>
@@ -964,6 +976,10 @@
                       <input type="number" class="form-input" id="setting-initial-attended" min="0" value="0">
                     </div>
                   </div>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-settings-update-pct" style="width: 100%; margin-top: 10px; border-color: rgba(139, 92, 246, 0.4); color: var(--accent-purple); font-weight: 700;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    <span>Update Percentage Directly</span>
+                  </button>
                 </div>
 
                 <!-- Method B Toggle -->
@@ -1425,6 +1441,155 @@
         </button>
         <button type="button" class="btn btn-secondary" data-close-modal>
           Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: ONBOARDING ATTENDANCE SETUP (POST-REGISTRATION) -->
+  <div class="modal-overlay" id="modal-onboarding-attendance">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span>Set Starting Attendance</span>
+          </h3>
+          <p class="modal-subtitle" id="onboarding-welcome-subtitle">Welcome! What is your current attendance percentage?</p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+          To calculate your safe absence allowance and period projections accurately, please set your starting attendance percentage from your college portal.
+        </p>
+
+        <!-- Big percentage input & quick presets -->
+        <div class="modal-percentage-display">
+          <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Current Starting Attendance</label>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+            <input type="number" step="0.1" min="0" max="100" id="onboarding-pct-input" value="85.0" class="form-input modal-percentage-number" style="width: 140px; text-align: center; height: 56px; border: 2px solid var(--accent-purple);">
+            <span style="font-size: 1.8rem; font-weight: 800; color: var(--accent-purple);">%</span>
+          </div>
+
+          <!-- Quick Preset Buttons -->
+          <div class="pct-presets-row" style="justify-content: center; margin-top: 12px; margin-bottom: 0;">
+            <button type="button" class="pct-preset-chip onboarding-preset" data-pct="0">0% (Day 1)</button>
+            <button type="button" class="pct-preset-chip onboarding-preset" data-pct="65">65%</button>
+            <button type="button" class="pct-preset-chip onboarding-preset" data-pct="75">75%</button>
+            <button type="button" class="pct-preset-chip onboarding-preset" data-pct="80">80%</button>
+            <button type="button" class="pct-preset-chip onboarding-preset active" data-pct="85">85%</button>
+            <button type="button" class="pct-preset-chip onboarding-preset" data-pct="90">90%</button>
+          </div>
+        </div>
+
+        <!-- Target Percentage Input -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" for="onboarding-target-input">Target Attendance Goal</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="onboarding-target-input" class="form-input" min="1" max="99" value="75" style="font-weight: 700; text-align: center;">
+              <span style="font-weight: 700;">%</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" for="onboarding-periods-per-day">Periods Per Day</label>
+            <input type="number" id="onboarding-periods-per-day" class="form-input" min="1" max="12" value="6" style="font-weight: 700; text-align: center;">
+          </div>
+        </div>
+
+        <!-- Optional Period Counts Collapsible -->
+        <details style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">
+          <summary style="cursor: pointer; font-weight: 600; color: var(--accent-purple); margin-bottom: 8px;">
+            Optional: Enter exact conducted & attended period counts
+          </summary>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;" for="onboarding-conducted-input">Conducted Periods</label>
+              <input type="number" id="onboarding-conducted-input" class="form-input" min="0" value="100">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;" for="onboarding-attended-input">Attended Periods</label>
+              <input type="number" id="onboarding-attended-input" class="form-input" min="0" value="85">
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btn-save-onboarding-attendance" style="width: 100%;">
+          <span>Save Attendance & Go to Dashboard &rarr;</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: UPDATE ATTENDANCE PERCENTAGE MODAL (ALWAYS ACCESSIBLE) -->
+  <div class="modal-overlay" id="modal-update-attendance-pct">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Update Attendance Percentage</span>
+          </h3>
+          <p class="modal-subtitle">Quickly adjust your attendance percentage and recalculate cushion</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-percentage-display">
+          <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">New Attendance Percentage</label>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-pct-step-down" style="padding: 6px 14px; font-weight: 800; font-size: 1.1rem;">&minus;</button>
+            <input type="number" step="0.1" min="0" max="100" id="update-modal-pct-input" value="85.0" class="form-input modal-percentage-number" style="width: 140px; text-align: center; height: 56px; border: 2px solid var(--accent-purple);">
+            <span style="font-size: 1.8rem; font-weight: 800; color: var(--accent-purple);">%</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-pct-step-up" style="padding: 6px 14px; font-weight: 800; font-size: 1.1rem;">+</button>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="pct-presets-row" style="justify-content: center; margin-top: 12px; margin-bottom: 0;">
+            <button type="button" class="pct-preset-chip update-preset" data-pct="65">65%</button>
+            <button type="button" class="pct-preset-chip update-preset" data-pct="70">70%</button>
+            <button type="button" class="pct-preset-chip update-preset" data-pct="75">75%</button>
+            <button type="button" class="pct-preset-chip update-preset" data-pct="80">80%</button>
+            <button type="button" class="pct-preset-chip update-preset active" data-pct="85">85%</button>
+            <button type="button" class="pct-preset-chip update-preset" data-pct="90">90%</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="update-modal-target-input">Target Attendance Goal (%)</label>
+          <input type="number" id="update-modal-target-input" class="form-input" min="1" max="99" value="75">
+        </div>
+
+        <!-- Period Breakdown Box -->
+        <div style="padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 12px;">
+          <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 6px;">
+            Baseline Period Breakdown:
+          </span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;" for="update-modal-conducted-input">Total Conducted</label>
+              <input type="number" id="update-modal-conducted-input" class="form-input" min="0" value="100">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;" for="update-modal-attended-input">Total Attended</label>
+              <input type="number" id="update-modal-attended-input" class="form-input" min="0" value="85">
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Calculation Pill -->
+        <div id="update-modal-preview-box" style="padding: 10px 14px; background: rgba(139, 92, 246, 0.08); border-radius: var(--radius-sm); border: 1px solid rgba(139, 92, 246, 0.2); font-size: 0.82rem; color: var(--text-secondary); text-align: center;">
+          <span id="update-modal-preview-text">Status: <b>On Track</b></span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btn-save-updated-percentage" style="width: 100%;">
+          <span>Save & Update Dashboard</span>
         </button>
       </div>
     </div>

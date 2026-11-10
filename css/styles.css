@@ -2475,3 +2475,71 @@ input:checked + .slider:before {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* ==============================================================================
+   ATTENDANCE PERCENTAGE UPDATE BUTTONS & ONBOARDING MODAL STYLES
+   ============================================================================== */
+.btn-update-percentage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-update-percentage-pill:hover {
+  background: var(--accent-purple);
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-purple-glow);
+}
+
+.pct-presets-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pct-preset-chip {
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pct-preset-chip:hover, .pct-preset-chip.active {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  font-weight: 700;
+}
+
+.modal-percentage-display {
+  text-align: center;
+  padding: 18px 14px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+.modal-percentage-number {
+  font-size: 2.2rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.04em;
+  color: var(--accent-purple) !important;
+}
+
+

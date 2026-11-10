@@ -24,6 +24,7 @@ const App = {
     this.bindCalculatorEvents();
     this.bindSettingsEvents();
     this.bindSupabaseEvents();
+    this.bindAttendancePercentageEvents();
     this.bindModals();
 
     AppNotifications.init();
@@ -142,6 +143,11 @@ const App = {
         AppNotifications.showToast(`Account created for ${name} (ID: ${studentId})!`, 'success');
         this.renderCurrentView();
         this.updateUserProfileInSidebar();
+
+        // Ask for their attendance percentage right after creating their account
+        setTimeout(() => {
+          this.openOnboardingAttendanceModal(name, target);
+        }, 350);
       });
     }
 
@@ -2091,6 +2097,263 @@ const App = {
       }
     }
     this.openModal('supabase-setup-modal');
+  },
+
+  /**
+   * Bind Attendance Percentage Setup & Update Events
+   */
+  bindAttendancePercentageEvents() {
+    // 1. Trigger buttons to open Update Attendance Percentage modal
+    const openBtns = [
+      'btn-open-update-percentage',
+      'btn-quick-update-percentage',
+      'btn-calc-update-pct',
+      'btn-settings-update-pct'
+    ];
+
+    openBtns.forEach((btnId) => {
+      const el = document.getElementById(btnId);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.openUpdateAttendanceModal();
+        });
+      }
+    });
+
+    // 2. Onboarding Modal presets
+    document.querySelectorAll('.onboarding-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.onboarding-preset').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const pct = parseFloat(btn.dataset.pct);
+        const pctInput = document.getElementById('onboarding-pct-input');
+        const condInput = document.getElementById('onboarding-conducted-input');
+        const attInput = document.getElementById('onboarding-attended-input');
+
+        if (pctInput) pctInput.value = pct.toFixed(1);
+        if (condInput && attInput) {
+          if (pct === 0) {
+            condInput.value = 0;
+            attInput.value = 0;
+          } else {
+            condInput.value = 100;
+            attInput.value = Math.round(pct);
+          }
+        }
+      });
+    });
+
+    // Synchronize Onboarding percentage input with conducted/attended
+    const onbPctInput = document.getElementById('onboarding-pct-input');
+    if (onbPctInput) {
+      onbPctInput.addEventListener('input', () => {
+        const val = parseFloat(onbPctInput.value) || 0;
+        const condInput = document.getElementById('onboarding-conducted-input');
+        const attInput = document.getElementById('onboarding-attended-input');
+        if (condInput && attInput) {
+          condInput.value = 100;
+          attInput.value = Math.round(val);
+        }
+        document.querySelectorAll('.onboarding-preset').forEach(b => {
+          b.classList.toggle('active', parseFloat(b.dataset.pct) === Math.round(val));
+        });
+      });
+    }
+
+    // Save Onboarding Attendance Baseline
+    const saveOnbBtn = document.getElementById('btn-save-onboarding-attendance');
+    if (saveOnbBtn) {
+      saveOnbBtn.addEventListener('click', () => {
+        const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('onboarding-pct-input')?.value) || 0));
+        const target = Math.min(99, Math.max(1, parseFloat(document.getElementById('onboarding-target-input')?.value) || 75));
+        const periodsPerDay = Math.min(12, Math.max(1, parseInt(document.getElementById('onboarding-periods-per-day')?.value) || 6));
+        const conducted = Math.max(0, parseInt(document.getElementById('onboarding-conducted-input')?.value) || (pct > 0 ? 100 : 0));
+        const attended = Math.min(conducted, Math.max(0, parseInt(document.getElementById('onboarding-attended-input')?.value) || Math.round(pct)));
+
+        AppStorage.saveSettings({
+          initialConductedPeriods: conducted,
+          initialAttendedPeriods: attended,
+          targetPercentage: target,
+          methodBStartingPercentage: pct,
+          periodsPerDay
+        });
+
+        this.closeModal('modal-onboarding-attendance');
+        AppNotifications.showToast(`Starting attendance set to ${pct.toFixed(1)}%! Ready to track.`, 'success');
+        this.renderCurrentView();
+        this.updateUserProfileInSidebar();
+      });
+    }
+
+    // 3. Update Modal presets
+    document.querySelectorAll('.update-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.update-preset').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const pct = parseFloat(btn.dataset.pct);
+        const pctInput = document.getElementById('update-modal-pct-input');
+        const condInput = document.getElementById('update-modal-conducted-input');
+        const attInput = document.getElementById('update-modal-attended-input');
+
+        if (pctInput) pctInput.value = pct.toFixed(1);
+        if (condInput && attInput) {
+          condInput.value = 100;
+          attInput.value = Math.round(pct);
+        }
+        this.updateAttendanceModalPreview();
+      });
+    });
+
+    // Step down and up buttons
+    const stepDownBtn = document.getElementById('btn-pct-step-down');
+    if (stepDownBtn) {
+      stepDownBtn.addEventListener('click', () => {
+        const input = document.getElementById('update-modal-pct-input');
+        if (!input) return;
+        const cur = parseFloat(input.value) || 0;
+        input.value = Math.max(0, (cur - 1)).toFixed(1);
+        this.syncUpdateModalInputsFromPct();
+      });
+    }
+
+    const stepUpBtn = document.getElementById('btn-pct-step-up');
+    if (stepUpBtn) {
+      stepUpBtn.addEventListener('click', () => {
+        const input = document.getElementById('update-modal-pct-input');
+        if (!input) return;
+        const cur = parseFloat(input.value) || 0;
+        input.value = Math.min(100, (cur + 1)).toFixed(1);
+        this.syncUpdateModalInputsFromPct();
+      });
+    }
+
+    // Modal inputs input events
+    const updatePctInput = document.getElementById('update-modal-pct-input');
+    if (updatePctInput) {
+      updatePctInput.addEventListener('input', () => {
+        this.syncUpdateModalInputsFromPct();
+      });
+    }
+
+    const updateTargetInput = document.getElementById('update-modal-target-input');
+    if (updateTargetInput) {
+      updateTargetInput.addEventListener('input', () => {
+        this.updateAttendanceModalPreview();
+      });
+    }
+
+    const updateCondInput = document.getElementById('update-modal-conducted-input');
+    const updateAttInput = document.getElementById('update-modal-attended-input');
+    if (updateCondInput && updateAttInput) {
+      const handlePeriodChange = () => {
+        const c = parseFloat(updateCondInput.value) || 0;
+        const a = parseFloat(updateAttInput.value) || 0;
+        if (c > 0 && updatePctInput) {
+          updatePctInput.value = ((a / c) * 100).toFixed(1);
+        }
+        this.updateAttendanceModalPreview();
+      };
+      updateCondInput.addEventListener('input', handlePeriodChange);
+      updateAttInput.addEventListener('input', handlePeriodChange);
+    }
+
+    // Save Updated Percentage
+    const saveUpdatedBtn = document.getElementById('btn-save-updated-percentage');
+    if (saveUpdatedBtn) {
+      saveUpdatedBtn.addEventListener('click', () => {
+        const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('update-modal-pct-input')?.value) || 0));
+        const target = Math.min(99, Math.max(1, parseFloat(document.getElementById('update-modal-target-input')?.value) || 75));
+        const conducted = Math.max(0, parseInt(document.getElementById('update-modal-conducted-input')?.value) || 100);
+        const attended = Math.min(conducted, Math.max(0, parseInt(document.getElementById('update-modal-attended-input')?.value) || Math.round(pct)));
+
+        AppStorage.saveSettings({
+          initialConductedPeriods: conducted,
+          initialAttendedPeriods: attended,
+          targetPercentage: target,
+          methodBStartingPercentage: pct
+        });
+
+        this.closeModal('modal-update-attendance-pct');
+        AppNotifications.showToast(`Attendance updated to ${pct.toFixed(1)}%! Dashboard refreshed.`, 'success');
+        this.renderCurrentView();
+        this.updateUserProfileInSidebar();
+      });
+    }
+  },
+
+  syncUpdateModalInputsFromPct() {
+    const pctInput = document.getElementById('update-modal-pct-input');
+    const condInput = document.getElementById('update-modal-conducted-input');
+    const attInput = document.getElementById('update-modal-attended-input');
+    const val = parseFloat(pctInput ? pctInput.value : 0) || 0;
+    if (condInput && attInput) {
+      condInput.value = 100;
+      attInput.value = Math.round(val);
+    }
+    document.querySelectorAll('.update-preset').forEach(b => {
+      b.classList.toggle('active', parseFloat(b.dataset.pct) === Math.round(val));
+    });
+    this.updateAttendanceModalPreview();
+  },
+
+  openOnboardingAttendanceModal(studentName, targetPercentage) {
+    const welcomeSub = document.getElementById('onboarding-welcome-subtitle');
+    if (welcomeSub) {
+      welcomeSub.textContent = `Welcome, ${studentName || 'Student'}! Set your starting attendance baseline.`;
+    }
+    const targetInput = document.getElementById('onboarding-target-input');
+    if (targetInput) targetInput.value = targetPercentage || 75;
+    this.openModal('modal-onboarding-attendance');
+  },
+
+  openUpdateAttendanceModal() {
+    const settings = AppStorage.getSettings();
+    const records = AppStorage.getRecords();
+    const stats = AttendanceCalculator.calculateStats(records, settings);
+
+    const pctInput = document.getElementById('update-modal-pct-input');
+    const targetInput = document.getElementById('update-modal-target-input');
+    const condInput = document.getElementById('update-modal-conducted-input');
+    const attInput = document.getElementById('update-modal-attended-input');
+
+    const curPct = stats.conducted > 0 ? stats.percentage : (settings.initialConductedPeriods > 0 ? (settings.initialAttendedPeriods / settings.initialConductedPeriods) * 100 : 85.0);
+
+    if (pctInput) pctInput.value = curPct.toFixed(1);
+    if (targetInput) targetInput.value = settings.targetPercentage || 75;
+    if (condInput) condInput.value = settings.initialConductedPeriods || 100;
+    if (attInput) attInput.value = settings.initialAttendedPeriods || Math.round(curPct);
+
+    document.querySelectorAll('.update-preset').forEach(b => {
+      b.classList.toggle('active', parseFloat(b.dataset.pct) === Math.round(curPct));
+    });
+
+    this.updateAttendanceModalPreview();
+    this.openModal('modal-update-attendance-pct');
+  },
+
+  updateAttendanceModalPreview() {
+    const previewText = document.getElementById('update-modal-preview-text');
+    if (!previewText) return;
+
+    const pct = parseFloat(document.getElementById('update-modal-pct-input')?.value) || 0;
+    const target = parseFloat(document.getElementById('update-modal-target-input')?.value) || 75;
+    const conducted = parseInt(document.getElementById('update-modal-conducted-input')?.value) || 100;
+    const attended = parseInt(document.getElementById('update-modal-attended-input')?.value) || Math.round(pct);
+
+    if (conducted <= 0) {
+      previewText.innerHTML = `Starting from 0% (Fresh Semester).`;
+      return;
+    }
+
+    const currentPct = (attended / conducted) * 100;
+    if (currentPct >= target) {
+      const safeBunks = Math.floor((100 * attended - target * conducted) / target);
+      previewText.innerHTML = `<span style="color: var(--color-present); font-weight: 700;">✓ Safe & On Track!</span> You have <b style="color: var(--color-present);">${safeBunks} safe periods</b> you can miss without dropping below ${target}%.`;
+    } else {
+      const needed = Math.ceil((target * conducted - 100 * attended) / (100 - target));
+      previewText.innerHTML = `<span style="color: var(--color-absent); font-weight: 700;">⚠️ Below Goal:</span> You need to attend next <b style="color: var(--color-absent);">${needed} consecutive classes</b> to reach ${target}%.`;
+    }
   },
 
   /**
