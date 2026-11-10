@@ -39,6 +39,31 @@
           </div>
         </div>
 
+        <!-- CAMERA FACE BIOMETRIC QUICK UNLOCK BUTTON -->
+        <div id="auth-face-unlock-container" style="margin-bottom: 16px;">
+          <button type="button" class="btn-face-biometric-scan" id="btn-start-face-unlock">
+            <div class="face-scan-icon-ring">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 3H5a2 2 0 0 0-2 2v2"></path>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                <path d="M3 17v2a2 2 0 0 0 2 2h2"></path>
+                <path d="M9 10h.01"></path>
+                <path d="M15 10h.01"></path>
+                <path d="M10 14a3.5 3.5 0 0 0 4 0"></path>
+              </svg>
+            </div>
+            <div class="face-scan-btn-labels">
+              <span class="face-scan-title">Scan Face to Unlock</span>
+              <span class="face-scan-sub">Camera Face Biometrics</span>
+            </div>
+          </button>
+
+          <div class="auth-divider">
+            <span>or use 4-digit PIN</span>
+          </div>
+        </div>
+
         <form id="auth-unlock-form">
           <div class="form-group" style="text-align: center;">
             <label class="form-label" for="auth-pin-input" style="font-size: 0.82rem;">Enter Security PIN</label>
@@ -827,6 +852,57 @@
                 </div>
               </div>
 
+              <!-- Face Biometrics & Security Card -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Face Biometrics & Security</h3>
+                    <p class="card-subtitle">Camera face recognition for 1-tap quick unlock</p>
+                  </div>
+                  <span class="badge" id="settings-face-status-badge">Not Enrolled</span>
+                </div>
+
+                <div class="biometric-settings-content">
+                  <div class="face-preview-box">
+                    <div class="face-preview-avatar" id="settings-face-preview">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M7 3H5a2 2 0 0 0-2 2v2"></path>
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                        <path d="M3 17v2a2 2 0 0 0 2 2h2"></path>
+                        <path d="M9 10h.01"></path>
+                        <path d="M15 10h.01"></path>
+                        <path d="M10 14a3.5 3.5 0 0 0 4 0"></path>
+                      </svg>
+                    </div>
+                    <div style="flex: 1;">
+                      <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 2px;" id="settings-face-title">Student Face ID</h4>
+                      <p style="font-size: 0.78rem; color: var(--text-muted);" id="settings-face-desc">Enroll your face to unlock AttendMark with a fast selfie scan.</p>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-enroll-face">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                      <span id="btn-enroll-face-label">Enroll / Re-Scan Face</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-test-face" style="display: none;">
+                      Test Face Match
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-remove-face" style="display: none; color: var(--color-absent);">
+                      Remove Face
+                    </button>
+                  </div>
+
+                  <div class="form-check" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+                    <input type="checkbox" id="setting-auto-face-scan" class="form-check-input">
+                    <label for="setting-auto-face-scan" class="form-check-label">
+                      Auto-launch camera face scan when app is locked
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <!-- Attendance Engine Parameters -->
               <div class="card">
                 <div class="card-header">
@@ -1108,9 +1184,68 @@
     </div>
   </div>
 
+  <!-- FACE BIOMETRIC CAMERA SCANNER MODAL -->
+  <div class="modal-overlay" id="modal-face-scanner" style="display: none;">
+    <div class="modal-content face-scanner-modal-content">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="face-scan-header-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M7 3H5a2 2 0 0 0-2 2v2"></path>
+              <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+              <path d="M3 17v2a2 2 0 0 0 2 2h2"></path>
+              <path d="M9 10h.01"></path>
+              <path d="M15 10h.01"></path>
+              <path d="M10 14a3.5 3.5 0 0 0 4 0"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="card-title" id="face-scanner-title">Face ID Verification</h3>
+            <p class="card-subtitle" id="face-scanner-subtitle">Align your face inside the circle</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btn-close-face-scanner" style="font-size: 1.4rem; color: var(--text-muted);">&times;</button>
+      </div>
+
+      <div class="face-scanner-body">
+        <div class="face-scanner-viewfinder" id="face-scanner-viewfinder">
+          <video id="face-scanner-video" autoplay playsinline muted></video>
+          <canvas id="face-scanner-canvas" style="display: none;"></canvas>
+          
+          <!-- Futuristic Apple Face ID HUD -->
+          <div class="face-hud-overlay">
+            <div class="face-hud-corner tl"></div>
+            <div class="face-hud-corner tr"></div>
+            <div class="face-hud-corner bl"></div>
+            <div class="face-hud-corner br"></div>
+            <div class="face-hud-scan-beam" id="face-hud-scan-beam"></div>
+          </div>
+
+          <!-- Countdown / Verified Flash Badge -->
+          <div class="face-hud-flash-badge" id="face-hud-flash-badge" style="display: none;">
+            <span id="face-hud-flash-text">3</span>
+          </div>
+        </div>
+
+        <div class="face-scanner-status-box">
+          <div class="face-scanner-pulse-dot" id="face-scanner-dot"></div>
+          <span class="face-scanner-status-msg" id="face-scanner-status-msg">Initializing camera...</span>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 16px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-face-scan">
+            Use PIN Instead
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Application Scripts -->
   <script src="js/calculator.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/biometrics.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/export.js"></script>
   <script src="js/notifications.js"></script>

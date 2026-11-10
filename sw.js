@@ -3,13 +3,14 @@
  * Enables offline caching, PWA installation, and lightning-fast loading.
  */
 
-const CACHE_NAME = 'attendmark-cache-v1';
+const CACHE_NAME = 'attendmark-cache-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './css/styles.css',
   './js/calculator.js',
   './js/storage.js',
+  './js/biometrics.js',
   './js/charts.js',
   './js/export.js',
   './js/notifications.js',

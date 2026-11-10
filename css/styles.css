@@ -1980,6 +1980,256 @@ input:checked + .slider:before {
   }
 }
 
+/* ==========================================================================
+   CAMERA FACE BIOMETRICS & FACIAL RECOGNITION HUD
+   ========================================================================== */
+.btn-face-biometric-scan {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(139, 92, 246, 0.05));
+  border: 1.5px solid rgba(139, 92, 246, 0.35);
+  color: var(--accent-purple);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.btn-face-biometric-scan:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(139, 92, 246, 0.09));
+  border-color: var(--accent-purple);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.22);
+}
+
+.face-scan-icon-ring {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+  color: var(--accent-purple);
+}
+
+.face-scan-btn-labels {
+  display: flex;
+  flex-direction: column;
+}
+
+.face-scan-title {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.face-scan-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0 14px 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.auth-divider span {
+  padding: 0 10px;
+}
+
+/* Face Scanner Viewfinder & Futuristic Apple HUD */
+.face-scanner-modal-content {
+  max-width: 380px;
+}
+
+.face-scan-header-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.face-scanner-body {
+  padding: 10px 8px 16px 8px;
+  text-align: center;
+}
+
+.face-scanner-viewfinder {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000000;
+  border: 3px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.28);
+  transition: all 0.3s ease;
+}
+
+.face-scanner-viewfinder.verified {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 32px rgba(16, 185, 129, 0.45) !important;
+}
+
+.face-scanner-viewfinder.failed {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 32px rgba(239, 68, 68, 0.45) !important;
+}
+
+#face-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror selfie */
+}
+
+.face-hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.face-hud-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #8B5CF6;
+}
+
+.face-hud-corner.tl { top: 18px; left: 18px; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
+.face-hud-corner.tr { top: 18px; right: 18px; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
+.face-hud-corner.bl { bottom: 18px; left: 18px; border-right: none; border-top: none; border-bottom-left-radius: 6px; }
+.face-hud-corner.br { bottom: 18px; right: 18px; border-left: none; border-top: none; border-bottom-right-radius: 6px; }
+
+.face-hud-scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #8B5CF6, #C4B5FD, #8B5CF6, transparent);
+  box-shadow: 0 0 10px #8B5CF6;
+  animation: scanSweepLaser 2s ease-in-out infinite;
+}
+
+@keyframes scanSweepLaser {
+  0% { top: 12%; opacity: 0.2; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 12%; opacity: 0.2; }
+}
+
+.face-hud-flash-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.7);
+  color: #FFFFFF;
+  font-size: 3rem;
+  font-weight: 850;
+  animation: pulseScale 0.6s ease infinite alternate;
+}
+
+@keyframes pulseScale {
+  0% { transform: scale(0.9); }
+  100% { transform: scale(1.1); }
+}
+
+.face-scanner-status-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 6px 14px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.face-scanner-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  box-shadow: 0 0 6px var(--accent-purple);
+  animation: pulseDot 1.2s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.face-scanner-status-msg {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Biometric Settings UI */
+.biometric-settings-content {
+  padding-top: 4px;
+}
+
+.face-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.face-preview-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-subtle);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent-purple);
+}
+
+.face-preview-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Print Stylesheet for PDF Generation */
 @media print {
   body {

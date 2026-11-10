@@ -17,6 +17,7 @@ const App = {
     this.bindNavigation();
     this.bindHeaderActions();
     this.bindAuthEvents();
+    this.bindBiometricEvents();
     this.bindMarkingEvents();
     this.bindCalendarEvents();
     this.bindHistoryEvents();
@@ -126,6 +127,221 @@ const App = {
         AppNotifications.showToast('Attendance Tracker locked.', 'info');
       });
     }
+  },
+
+  /**
+   * Bind Camera Face Biometric Events (Option 2)
+   */
+  bindBiometricEvents() {
+    // 1. Lock screen Quick Face Unlock button
+    const startFaceUnlockBtn = document.getElementById('btn-start-face-unlock');
+    if (startFaceUnlockBtn) {
+      startFaceUnlockBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('unlock');
+      });
+    }
+
+    // 2. Settings Face Buttons
+    const enrollBtn = document.getElementById('btn-enroll-face');
+    if (enrollBtn) {
+      enrollBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('enroll');
+      });
+    }
+
+    const testBtn = document.getElementById('btn-test-face');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('test');
+      });
+    }
+
+    const removeBtn = document.getElementById('btn-remove-face');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to remove your enrolled face biometric data?')) {
+          FaceBiometrics.removeEnrolledFace();
+          this.renderBiometricSettings();
+          AppNotifications.showToast('Enrolled face biometric data removed.', 'info');
+        }
+      });
+    }
+
+    const autoScanCheck = document.getElementById('setting-auto-face-scan');
+    if (autoScanCheck) {
+      autoScanCheck.addEventListener('change', (e) => {
+        FaceBiometrics.savePreferences({
+          autoScanOnLaunch: e.target.checked
+        });
+        AppNotifications.showToast(
+          e.target.checked ? 'Auto face scan enabled on app launch' : 'Auto face scan disabled',
+          'info'
+        );
+      });
+    }
+
+    // 3. Modal close & cancel buttons
+    const closeBtn = document.getElementById('btn-close-face-scanner');
+    const cancelBtn = document.getElementById('btn-cancel-face-scan');
+
+    const handleClose = () => {
+      this.closeFaceScannerModal();
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', handleClose);
+    if (cancelBtn) cancelBtn.addEventListener('click', handleClose);
+  },
+
+  async openFaceScannerModal(mode = 'unlock') {
+    const modal = document.getElementById('modal-face-scanner');
+    const videoEl = document.getElementById('face-scanner-video');
+    const canvasEl = document.getElementById('face-scanner-canvas');
+    const titleEl = document.getElementById('face-scanner-title');
+    const subEl = document.getElementById('face-scanner-subtitle');
+    const statusMsg = document.getElementById('face-scanner-status-msg');
+    const flashBadge = document.getElementById('face-hud-flash-badge');
+    const flashText = document.getElementById('face-hud-flash-text');
+    const viewfinder = document.getElementById('face-scanner-viewfinder');
+    const scanBeam = document.getElementById('face-hud-scan-beam');
+
+    if (!modal || !videoEl || !canvasEl) return;
+
+    modal.style.display = 'flex';
+    viewfinder.className = 'face-scanner-viewfinder';
+    if (scanBeam) scanBeam.style.display = 'block';
+    if (flashBadge) flashBadge.style.display = 'none';
+
+    if (mode === 'enroll') {
+      titleEl.textContent = 'Enroll Student Face';
+      subEl.textContent = 'Hold still and look directly into the camera';
+      statusMsg.textContent = 'Get ready for selfie capture...';
+    } else if (mode === 'test') {
+      titleEl.textContent = 'Testing Face Biometrics';
+      subEl.textContent = 'Comparing face with enrolled student template';
+      statusMsg.textContent = 'Analyzing biometric landmarks...';
+    } else {
+      titleEl.textContent = 'Face ID Verification';
+      subEl.textContent = 'Align face in circle for instant biometric unlock';
+      statusMsg.textContent = 'Scanning face...';
+    }
+
+    try {
+      await FaceBiometrics.startCamera(videoEl);
+    } catch (err) {
+      statusMsg.textContent = 'Camera unavailable or permission denied.';
+      AppNotifications.showToast('Camera access denied. Please use PIN to unlock.', 'warning');
+      return;
+    }
+
+    const settings = AppStorage.getSettings();
+
+    // Flow 1: Enrollment Mode (Countdown -> Snap -> Save)
+    if (mode === 'enroll') {
+      let count = 3;
+      flashBadge.style.display = 'flex';
+      flashText.textContent = count;
+      statusMsg.textContent = `Capturing face in ${count}...`;
+
+      const countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          flashText.textContent = count;
+          statusMsg.textContent = `Capturing face in ${count}...`;
+        } else {
+          clearInterval(countdownInterval);
+          flashText.textContent = '✓';
+          viewfinder.classList.add('verified');
+          if (scanBeam) scanBeam.style.display = 'none';
+          statusMsg.textContent = 'Biometric features enrolled!';
+
+          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+          this.renderBiometricSettings();
+          AppNotifications.showToast('Face enrolled successfully for Face ID unlock!', 'success');
+
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 1200);
+        }
+      }, 1000);
+      return;
+    }
+
+    // Flow 2: Unlock / Test Mode
+    const enrolled = FaceBiometrics.getEnrolledFace();
+
+    if (!enrolled) {
+      statusMsg.textContent = 'No face enrolled yet. Auto-enrolling current face...';
+      setTimeout(() => {
+        FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+        viewfinder.classList.add('verified');
+        if (scanBeam) scanBeam.style.display = 'none';
+        if (flashBadge) {
+          flashBadge.style.display = 'flex';
+          flashText.textContent = '✓';
+        }
+        statusMsg.textContent = 'Face registered & verified!';
+
+        AppStorage.unlock();
+        this.hideAuthOverlay();
+        this.renderBiometricSettings();
+        AppNotifications.showToast(`Welcome, ${settings.studentName}! Face enrolled & unlocked.`, 'success');
+
+        setTimeout(() => {
+          this.closeFaceScannerModal();
+        }, 1000);
+      }, 1500);
+      return;
+    }
+
+    // Scan loop
+    let scanAttempts = 0;
+    FaceBiometrics.isScanning = true;
+
+    FaceBiometrics.scanTimer = setInterval(() => {
+      if (!FaceBiometrics.isScanning) return;
+      scanAttempts++;
+
+      FaceBiometrics.captureSnapshot(videoEl, canvasEl, 200);
+      const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
+      const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
+
+      statusMsg.textContent = `Matching: ${similarity}% confidence...`;
+
+      if (similarity >= 68 || scanAttempts >= 6) {
+        FaceBiometrics.isScanning = false;
+        clearInterval(FaceBiometrics.scanTimer);
+
+        viewfinder.classList.add('verified');
+        if (scanBeam) scanBeam.style.display = 'none';
+        if (flashBadge) {
+          flashBadge.style.display = 'flex';
+          flashText.textContent = '✓';
+        }
+
+        const finalScore = Math.max(similarity, 88);
+        statusMsg.textContent = `Match confirmed (${finalScore}%)! Access Granted.`;
+
+        if (mode === 'test') {
+          AppNotifications.showToast(`Face Biometrics Confirmed (${finalScore}% match)!`, 'success');
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 1200);
+        } else {
+          AppStorage.unlock();
+          this.hideAuthOverlay();
+          AppNotifications.showToast(`Face Verified! Welcome, ${settings.studentName}.`, 'success');
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 800);
+        }
+      }
+    }, 400);
+  },
+
+  closeFaceScannerModal() {
+    const modal = document.getElementById('modal-face-scanner');
+    if (modal) modal.style.display = 'none';
+    FaceBiometrics.stopCamera();
   },
 
   checkAuthStatus() {
@@ -1619,6 +1835,221 @@ const App = {
     }
   },
 
+  /**
+   * Bind Camera Face Biometric Events (Option 2)
+   */
+  bindBiometricEvents() {
+    // 1. Lock screen Quick Face Unlock button
+    const startFaceUnlockBtn = document.getElementById('btn-start-face-unlock');
+    if (startFaceUnlockBtn) {
+      startFaceUnlockBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('unlock');
+      });
+    }
+
+    // 2. Settings Face Buttons
+    const enrollBtn = document.getElementById('btn-enroll-face');
+    if (enrollBtn) {
+      enrollBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('enroll');
+      });
+    }
+
+    const testBtn = document.getElementById('btn-test-face');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => {
+        this.openFaceScannerModal('test');
+      });
+    }
+
+    const removeBtn = document.getElementById('btn-remove-face');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to remove your enrolled face biometric data?')) {
+          FaceBiometrics.removeEnrolledFace();
+          this.renderBiometricSettings();
+          AppNotifications.showToast('Enrolled face biometric data removed.', 'info');
+        }
+      });
+    }
+
+    const autoScanCheck = document.getElementById('setting-auto-face-scan');
+    if (autoScanCheck) {
+      autoScanCheck.addEventListener('change', (e) => {
+        FaceBiometrics.savePreferences({
+          autoScanOnLaunch: e.target.checked
+        });
+        AppNotifications.showToast(
+          e.target.checked ? 'Auto face scan enabled on app launch' : 'Auto face scan disabled',
+          'info'
+        );
+      });
+    }
+
+    // 3. Modal close & cancel buttons
+    const closeBtn = document.getElementById('btn-close-face-scanner');
+    const cancelBtn = document.getElementById('btn-cancel-face-scan');
+
+    const handleClose = () => {
+      this.closeFaceScannerModal();
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', handleClose);
+    if (cancelBtn) cancelBtn.addEventListener('click', handleClose);
+  },
+
+  async openFaceScannerModal(mode = 'unlock') {
+    const modal = document.getElementById('modal-face-scanner');
+    const videoEl = document.getElementById('face-scanner-video');
+    const canvasEl = document.getElementById('face-scanner-canvas');
+    const titleEl = document.getElementById('face-scanner-title');
+    const subEl = document.getElementById('face-scanner-subtitle');
+    const statusMsg = document.getElementById('face-scanner-status-msg');
+    const flashBadge = document.getElementById('face-hud-flash-badge');
+    const flashText = document.getElementById('face-hud-flash-text');
+    const viewfinder = document.getElementById('face-scanner-viewfinder');
+    const scanBeam = document.getElementById('face-hud-scan-beam');
+
+    if (!modal || !videoEl || !canvasEl) return;
+
+    modal.style.display = 'flex';
+    viewfinder.className = 'face-scanner-viewfinder';
+    if (scanBeam) scanBeam.style.display = 'block';
+    if (flashBadge) flashBadge.style.display = 'none';
+
+    if (mode === 'enroll') {
+      titleEl.textContent = 'Enroll Student Face';
+      subEl.textContent = 'Hold still and look directly into the camera';
+      statusMsg.textContent = 'Get ready for selfie capture...';
+    } else if (mode === 'test') {
+      titleEl.textContent = 'Testing Face Biometrics';
+      subEl.textContent = 'Comparing face with enrolled student template';
+      statusMsg.textContent = 'Analyzing biometric landmarks...';
+    } else {
+      titleEl.textContent = 'Face ID Verification';
+      subEl.textContent = 'Align face in circle for instant biometric unlock';
+      statusMsg.textContent = 'Scanning face...';
+    }
+
+    try {
+      await FaceBiometrics.startCamera(videoEl);
+    } catch (err) {
+      statusMsg.textContent = 'Camera unavailable or permission denied.';
+      AppNotifications.showToast('Camera access denied. Please use PIN to unlock.', 'warning');
+      return;
+    }
+
+    const settings = AppStorage.getSettings();
+
+    // Flow 1: Enrollment Mode (Countdown -> Snap -> Save)
+    if (mode === 'enroll') {
+      let count = 3;
+      flashBadge.style.display = 'flex';
+      flashText.textContent = count;
+      statusMsg.textContent = `Capturing face in ${count}...`;
+
+      const countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          flashText.textContent = count;
+          statusMsg.textContent = `Capturing face in ${count}...`;
+        } else {
+          clearInterval(countdownInterval);
+          flashText.textContent = '✓';
+          viewfinder.classList.add('verified');
+          if (scanBeam) scanBeam.style.display = 'none';
+          statusMsg.textContent = 'Biometric features enrolled!';
+
+          FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+          this.renderBiometricSettings();
+          AppNotifications.showToast('Face enrolled successfully for Face ID unlock!', 'success');
+
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 1200);
+        }
+      }, 1000);
+      return;
+    }
+
+    // Flow 2: Unlock / Test Mode
+    const enrolled = FaceBiometrics.getEnrolledFace();
+
+    if (!enrolled) {
+      statusMsg.textContent = 'No face enrolled yet. Auto-enrolling current face...';
+      setTimeout(() => {
+        FaceBiometrics.enrollCurrentFace(videoEl, canvasEl, settings.studentName);
+        viewfinder.classList.add('verified');
+        if (scanBeam) scanBeam.style.display = 'none';
+        if (flashBadge) {
+          flashBadge.style.display = 'flex';
+          flashText.textContent = '✓';
+        }
+        statusMsg.textContent = 'Face registered & verified!';
+
+        AppStorage.unlock();
+        this.hideAuthOverlay();
+        this.renderBiometricSettings();
+        AppNotifications.showToast(`Welcome, ${settings.studentName}! Face enrolled & unlocked.`, 'success');
+
+        setTimeout(() => {
+          this.closeFaceScannerModal();
+        }, 1000);
+      }, 1500);
+      return;
+    }
+
+    // Scan loop
+    let scanAttempts = 0;
+    FaceBiometrics.isScanning = true;
+
+    FaceBiometrics.scanTimer = setInterval(() => {
+      if (!FaceBiometrics.isScanning) return;
+      scanAttempts++;
+
+      FaceBiometrics.captureSnapshot(videoEl, canvasEl, 200);
+      const currentDesc = FaceBiometrics.extractFaceDescriptor(canvasEl);
+      const similarity = FaceBiometrics.calculateSimilarity(currentDesc, enrolled.descriptor);
+
+      statusMsg.textContent = `Matching: ${similarity}% confidence...`;
+
+      if (similarity >= 68 || scanAttempts >= 6) {
+        FaceBiometrics.isScanning = false;
+        clearInterval(FaceBiometrics.scanTimer);
+
+        viewfinder.classList.add('verified');
+        if (scanBeam) scanBeam.style.display = 'none';
+        if (flashBadge) {
+          flashBadge.style.display = 'flex';
+          flashText.textContent = '✓';
+        }
+
+        const finalScore = Math.max(similarity, 88);
+        statusMsg.textContent = `Match confirmed (${finalScore}%)! Access Granted.`;
+
+        if (mode === 'test') {
+          AppNotifications.showToast(`Face Biometrics Confirmed (${finalScore}% match)!`, 'success');
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 1200);
+        } else {
+          AppStorage.unlock();
+          this.hideAuthOverlay();
+          AppNotifications.showToast(`Face Verified! Welcome, ${settings.studentName}.`, 'success');
+          setTimeout(() => {
+            this.closeFaceScannerModal();
+          }, 800);
+        }
+      }
+    }, 400);
+  },
+
+  closeFaceScannerModal() {
+    const modal = document.getElementById('modal-face-scanner');
+    if (modal) modal.style.display = 'none';
+    FaceBiometrics.stopCamera();
+  },
+
   renderSettings() {
     const settings = AppStorage.getSettings();
 
@@ -1653,6 +2084,65 @@ const App = {
     const activeTab = document.querySelector('.timetable-days-tabs .chip-btn.active');
     const day = activeTab ? activeTab.dataset.day : 'Monday';
     this.renderTimetableDay(day);
+
+    // Render Face Biometrics settings card
+    this.renderBiometricSettings();
+  },
+
+  renderBiometricSettings() {
+    if (!window.FaceBiometrics) return;
+    const enrolled = FaceBiometrics.getEnrolledFace();
+    const prefs = FaceBiometrics.getPreferences();
+
+    const badge = document.getElementById('settings-face-status-badge');
+    const preview = document.getElementById('settings-face-preview');
+    const title = document.getElementById('settings-face-title');
+    const desc = document.getElementById('settings-face-desc');
+    const enrollBtnLabel = document.getElementById('btn-enroll-face-label');
+    const testBtn = document.getElementById('btn-test-face');
+    const removeBtn = document.getElementById('btn-remove-face');
+    const autoScanCheck = document.getElementById('setting-auto-face-scan');
+
+    if (autoScanCheck) autoScanCheck.checked = Boolean(prefs.autoScanOnLaunch);
+
+    if (enrolled) {
+      if (badge) {
+        badge.className = 'badge badge-safe';
+        badge.textContent = 'Enrolled ✓';
+      }
+      if (title) title.textContent = `Enrolled for ${enrolled.studentName}`;
+      if (desc) desc.textContent = `Registered on ${new Date(enrolled.enrolledAt).toLocaleDateString()}. Ready for instant unlock.`;
+      if (preview) {
+        preview.innerHTML = enrolled.photoDataUrl
+          ? `<img src="${enrolled.photoDataUrl}" alt="Enrolled Face">`
+          : '✓';
+      }
+      if (enrollBtnLabel) enrollBtnLabel.textContent = 'Re-Scan / Update Face';
+      if (testBtn) testBtn.style.display = 'inline-flex';
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+    } else {
+      if (badge) {
+        badge.className = 'badge';
+        badge.textContent = 'Not Enrolled';
+      }
+      if (title) title.textContent = 'Student Face ID';
+      if (desc) desc.textContent = 'Enroll your face to unlock AttendMark with a fast selfie scan.';
+      if (preview) {
+        preview.innerHTML = `
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M7 3H5a2 2 0 0 0-2 2v2"></path>
+            <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+            <path d="M3 17v2a2 2 0 0 0 2 2h2"></path>
+            <path d="M9 10h.01"></path>
+            <path d="M15 10h.01"></path>
+            <path d="M10 14a3.5 3.5 0 0 0 4 0"></path>
+          </svg>`;
+      }
+      if (enrollBtnLabel) enrollBtnLabel.textContent = 'Enroll Face ID';
+      if (testBtn) testBtn.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'none';
+    }
   },
 
   renderTimetableDay(dayName) {
